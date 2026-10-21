@@ -1,0 +1,8 @@
+/* Self-hosted MedievalSharp (SIL OFL 1.1, see OFL.txt) - replaces the fonts.googleapis.com link */
+@font-face {
+  font-family: "MedievalSharp";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/MedievalSharp-Regular.ttf") format("truetype");
+}

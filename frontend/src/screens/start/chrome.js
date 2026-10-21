@@ -52,7 +52,7 @@ function enterStartSkin(doc, title, undo) {
   // MedievalSharp: the banner title's display font. Loaded only while the start skin is mounted.
   const fontLink = doc.createElement("link");
   fontLink.rel = "stylesheet";
-  fontLink.href = "https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap";
+  fontLink.href = "/fonts/medievalsharp.css"; // self-hosted, no request to Google Fonts
   doc.head.appendChild(fontLink);
   undo.push(() => fontLink.remove());
   // <meta name="viewport"> (the start pages are responsive)
