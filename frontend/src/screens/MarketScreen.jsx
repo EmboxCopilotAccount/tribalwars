@@ -224,28 +224,107 @@ function SendMode({ village, villages, market, go, presetId }) {
   );
 }
 
+/* The Buy page's filters and sort order, remembered per browser. sort: a column key, dir: 1 ascending / -1 descending. */
+const LS_BUY = "twlan2.market.buy";
+const BUY_DEFAULT = { offer: null, request: null, maxDistance: "", reachable: false, sort: "distance", dir: 1 };
+const loadBuy = () => {
+  try {
+    return { ...BUY_DEFAULT, ...JSON.parse(window.localStorage.getItem(LS_BUY) || "{}") };
+  } catch {
+    return BUY_DEFAULT;
+  }
+};
+// the value each sortable column sorts by; ratio is offered per requested, so more is better for the one accepting
+const SORT_KEYS = {
+  offer: (o) => o.sellAmount,
+  request: (o) => o.buyAmount,
+  ratio: (o) => o.ratio,
+  distance: (o) => o.distance,
+  remaining: (o) => o.remaining,
+};
+const FIRST_DIR = { offer: -1, request: 1, ratio: -1, distance: 1, remaining: -1 };
+
+// "All" or one resource, as a row of links (the chosen one bold)
+function ResPicker({ value, onChange }) {
+  const link = (r, label) => (
+    <a href="#" style={{ fontWeight: value === r ? "bold" : "normal", marginRight: 6, textDecoration: value === r ? "underline" : "none" }}
+      onClick={(e) => { e.preventDefault(); onChange(r); }}>
+      {label}
+    </a>
+  );
+  return (
+    <span className="nowrap">
+      {link(null, "All")}
+      {RESOURCES.map(([r]) => <span key={r}>{link(r, <ResIcon r={r} />)}</span>)}
+    </span>
+  );
+}
+
 function BuyMode({ market, go }) {
   const { state, act } = market;
   const [times, setTimes] = useState({});
-  const offers = state?.offers ?? [];
+  const [f, setF] = useState(loadBuy);
+  const update = (patch) => {
+    const next = { ...f, ...patch };
+    setF(next);
+    try {
+      window.localStorage.setItem(LS_BUY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable */
+    }
+  };
   const merchants = state?.merchants ?? { available: 0, total: 0 };
+  const all = state?.offers ?? [];
+  const tooFarFor = (o) => o.maxDistance > 0 && o.distance > o.maxDistance;
+  const maxDist = parseInt(f.maxDistance, 10) || 0;
+  const key = SORT_KEYS[f.sort] ?? SORT_KEYS.distance;
+  const offers = all
+    .filter((o) => (!f.offer || o.sellResource === f.offer) && (!f.request || o.buyResource === f.request))
+    .filter((o) => !maxDist || o.distance <= maxDist)
+    .filter((o) => !f.reachable || (!tooFarFor(o) && o.merchantsNeeded <= merchants.available))
+    .sort((a, b) => (key(a) - key(b)) * f.dir || a.distance - b.distance);
+  const sortBy = (col) => update(f.sort === col ? { dir: -f.dir } : { sort: col, dir: FIRST_DIR[col] });
+  const head = (col, label) => (
+    <th className="nowrap">
+      <a href="#" onClick={(e) => { e.preventDefault(); sortBy(col); }}>{label}</a>
+      {f.sort === col && (f.dir > 0 ? " ▲" : " ▼")}
+    </th>
+  );
   return (
     <>
+      <table className="vis" style={{ marginBottom: 4 }}>
+        <tbody>
+          <tr>
+            <td>Offered:</td>
+            <td><ResPicker value={f.offer} onChange={(r) => update({ offer: r })} /></td>
+            <td>Requested:</td>
+            <td><ResPicker value={f.request} onChange={(r) => update({ request: r })} /></td>
+            <td className="nowrap">
+              Max. distance: <input type="text" size="3" value={f.maxDistance} onChange={(e) => update({ maxDistance: e.target.value.replace(/\D/g, "") })} /> fields
+            </td>
+            <td className="nowrap">
+              <label>
+                <input type="checkbox" checked={f.reachable} onChange={(e) => update({ reachable: e.target.checked })} /> Only offers I can accept
+              </label>
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <table className="vis" width="100%">
         <tbody>
           <tr>
             <th>Village</th>
-            <th>Offer</th>
-            <th>Request</th>
-            <th>Ratio</th>
-            <th>Distance</th>
+            {head("offer", "Offer")}
+            {head("request", "Request")}
+            {head("ratio", "Ratio")}
+            {head("distance", "Distance")}
             <th>Merchants</th>
-            <th>Available</th>
+            {head("remaining", "Available")}
             <th>Accept</th>
           </tr>
           {offers.map((o) => {
             const n = Math.min(o.remaining, Math.max(1, parseInt(times[o.id], 10) || 1));
-            const tooFar = o.maxDistance > 0 && o.distance > o.maxDistance;
+            const tooFar = tooFarFor(o);
             return (
               <tr key={o.id}>
                 <td>
@@ -274,7 +353,7 @@ function BuyMode({ market, go }) {
           })}
           {offers.length === 0 && (
             <tr>
-              <td colSpan="8">There are no offers at the moment.</td>
+              <td colSpan="8">{all.length === 0 ? "There are no offers at the moment." : `None of the ${all.length} offers match the filter.`}</td>
             </tr>
           )}
         </tbody>
