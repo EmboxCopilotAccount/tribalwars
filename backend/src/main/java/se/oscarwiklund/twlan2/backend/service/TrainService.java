@@ -104,7 +104,7 @@ public class TrainService {
         // the original's nobleman time: base * 0.48 / 1.06^academy level
         double speedFactor = paladin ? 1
                 : type == UnitType.SNOB ? 0.48 / Math.pow(1.06, buildingLevel)
-                : Math.max(0.1, 1 - (buildingLevel * 0.02)) * BonusType.recruitTimeFactor(village, building);
+                : recruitFactor(buildingLevel) * BonusType.recruitTimeFactor(village, building);
         long perUnitSeconds = settings.scaleSeconds(village, type.buildTimeSeconds * speedFactor);
 
         List<TrainQueueItem> queue = trainQueues.of(village, building);
@@ -124,6 +124,11 @@ public class TrainService {
         }
 
         return trainQueueItemRepository.save(item);
+    }
+
+    // The original's recruit time: base * 2/3 / 1.06^level of the barracks, stable or workshop.
+    public static double recruitFactor(int buildingLevel) {
+        return 2.0 / 3.0 / Math.pow(1.06, buildingLevel);
     }
 
     // No resource cost and no refund on cancel: the units are removed from the village's stock only once the
@@ -154,7 +159,7 @@ public class TrainService {
             throw new TrainException("Not enough " + type.displayName() + " at home to decommission");
         }
 
-        double speedFactor = Math.max(0.1, 1 - (buildingLevel * 0.02)) * BonusType.recruitTimeFactor(village, building);
+        double speedFactor = recruitFactor(buildingLevel) * BonusType.recruitTimeFactor(village, building);
         long perUnitSeconds = settings.scaleSeconds(village, type.buildTimeSeconds * speedFactor);
 
         List<TrainQueueItem> queue = trainQueues.of(village, building);

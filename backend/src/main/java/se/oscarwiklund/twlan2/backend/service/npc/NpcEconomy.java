@@ -216,7 +216,7 @@ public class NpcEconomy {
         int freePop = popCap - s.popNow - s.popPending;
         for (int r = 0; r < 3; r++) s.reserve[r] = Math.max(s.reserve[r], s.nobleCost[r]); // noblemen are saved for, not spent on troops
         double share = 0.6; // never spend everything on troops: buildings need their resources too
-        long perUnit = settings.scaleSeconds(v, type.buildTimeSeconds * Math.max(0.1, 1 - s.level(type.recruitBuilding) * 0.02) * BonusType.recruitTimeFactor(v, type.recruitBuilding));
+        long perUnit = settings.scaleSeconds(v, type.buildTimeSeconds * TrainService.recruitFactor(s.level(type.recruitBuilding)) * BonusType.recruitTimeFactor(v, type.recruitBuilding));
         int n = NpcArmy.batch(type, Math.max(0, v.getWood() - s.reserve[0]) * share, Math.max(0, v.getClay() - s.reserve[1]) * share,
                 Math.max(0, v.getIron() - s.reserve[2]) * share, freePop, perUnit, d.keepBusy() ? 3600 : 1800);
         if (n < 1) return;

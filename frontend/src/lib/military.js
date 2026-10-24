@@ -413,10 +413,10 @@ export function isResearched(village, id) {
   return entry ? entry.researched : true;
 }
 
-/* Seconds per unit. The backend (TrainService) shortens the base time by 2% per level of the unit's own
-   recruit building (Barracks / Stable / Workshop) and by the village's bonus, if it has a recruiting one. */
+/* Seconds per unit, as the backend (TrainService.recruitFactor) counts it: base * 2/3 / 1.06^level of the unit's own
+   recruit building (Barracks / Stable / Workshop), shortened by the village's bonus if it has a recruiting one. */
 export function recruitSeconds(village, id) {
   const level = reqLevel(village, UNIT_RECRUIT[id].building);
   const bonus = recruitFactor(village.bonus, UNIT_RECRUIT[id].building); // bonus village: faster in its barracks / stable / workshop
-  return Math.max(1, Math.round((UNIT_RECRUIT[id].time * Math.max(0.1, 1 - level * 0.02) * bonus) / (village.worldSpeed || 1)));
+  return Math.max(1, Math.round((UNIT_RECRUIT[id].time * (2 / 3) / Math.pow(1.06, level) * bonus) / (village.worldSpeed || 1)));
 }
