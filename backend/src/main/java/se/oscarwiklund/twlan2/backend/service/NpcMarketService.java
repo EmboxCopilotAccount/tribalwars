@@ -18,6 +18,11 @@ public class NpcMarketService {
 
     // Threshold at which an offer is considered fair enough to fill: the offerer must get at least this much of what they give away.
     static final double FAIR_RATIO = 0.85;
+
+    // An NPC that takes up an offer gets its sellAmount and pays its buyAmount: worth it only if that is roughly fair.
+    static boolean fairForNpc(MarketOffer o) {
+        return (double) o.getSellAmount() / o.getBuyAmount() >= FAIR_RATIO;
+    }
     private static final Resource[] RESOURCES = Resource.values();
 
     private final MarketService market;
@@ -101,7 +106,7 @@ public class NpcMarketService {
         try {
             for (MarketOffer o : offers.findByWorldId(v.getWorld().getId())) {
                 if (o.getSellResource() != need || o.getBuyResource() != give || o.getVillageId().equals(v.getId())) continue;
-                if ((double) o.getSellAmount() / o.getBuyAmount() < FAIR_RATIO) continue;
+                if (!fairForNpc(o)) continue;
                 int times = Math.min(o.getRemaining(), Math.max(1, (int) Math.ceil((double) missing / o.getSellAmount())));
                 while (times > 1 && (double) o.getBuyAmount() * times > spare) times--;
                 if ((double) o.getBuyAmount() * times > spare) continue;
@@ -131,7 +136,7 @@ public class NpcMarketService {
         Instant tooFresh = Instant.now().minusSeconds(20);
         for (MarketOffer o : offers.findAll()) {
             if (o.getCreatedAt().isAfter(tooFresh) || rnd.nextDouble() > 0.15) continue;
-            if ((double) o.getBuyAmount() / o.getSellAmount() < FAIR_RATIO) continue;
+            if (!fairForNpc(o)) continue;
             Village seller = villages.findById(o.getVillageId()).orElse(null);
             if (seller == null || seller.getOwner() == null || seller.getOwner().isNpc() || seller.getWorld() == null) continue;
             if (!WorldSettings.bool(seller.getWorld(), "npcMarket")) continue;

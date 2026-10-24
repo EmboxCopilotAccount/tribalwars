@@ -1,8 +1,11 @@
 package se.oscarwiklund.twlan2.backend.service;
 
 import org.junit.jupiter.api.Test;
+import se.oscarwiklund.twlan2.backend.domain.MarketOffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarketRulesTest {
 
@@ -27,5 +30,21 @@ class MarketRulesTest {
         assertEquals(1, MarketService.merchantsNeeded(1000));
         assertEquals(2, MarketService.merchantsNeeded(1001));
         assertEquals(5, MarketService.merchantsNeeded(4500));
+    }
+
+    private static MarketOffer offer(int sell, int buy) {
+        MarketOffer o = new MarketOffer();
+        o.setSellAmount(sell);
+        o.setBuyAmount(buy);
+        return o;
+    }
+
+    @Test
+    void npcsOnlyTakeUpOffersThatAreFairToThem() {
+        assertFalse(NpcMarketService.fairForNpc(offer(1000, 10000))); // the player wants ten times what they give
+        assertFalse(NpcMarketService.fairForNpc(offer(800, 1000)));
+        assertTrue(NpcMarketService.fairForNpc(offer(850, 1000)));
+        assertTrue(NpcMarketService.fairForNpc(offer(1000, 1000)));
+        assertTrue(NpcMarketService.fairForNpc(offer(2000, 1000))); // a generous offer
     }
 }
