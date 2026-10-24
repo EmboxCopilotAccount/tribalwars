@@ -67,7 +67,11 @@ public class ConquestService {
         unitStock.deleteAll(unitStock.findByVillage(village));
         List<Movement> own = movements.findByOriginVillageOrTargetVillage(village, village);
         for (Movement m : own) {
-            if (m.getOriginVillage().getId().equals(village.getId())) movements.delete(m); // troops of the old owner that were away
+            boolean fromHere = m.getOriginVillage().getId().equals(village.getId());
+            boolean toHere = m.getTargetVillage().getId().equals(village.getId());
+            // troops of the old owner that were away: commands still on the road from here, and troops on their way
+            // back home. Return trips that start here belong to others (an earlier wave, guests sent home): they go on.
+            if (fromHere && m.getType() != MovementType.RETURN || toHere && m.getType() == MovementType.RETURN) movements.delete(m);
         }
         STARTER_BASE.forEach((type, level) -> {
             Building b = buildings.findByVillageAndType(village, type).orElseGet(() -> {
