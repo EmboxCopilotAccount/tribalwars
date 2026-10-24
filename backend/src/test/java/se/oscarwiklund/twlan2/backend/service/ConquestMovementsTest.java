@@ -29,6 +29,7 @@ class ConquestMovementsTest {
     @Autowired UnitStockRepository stocks;
     @Autowired VillageService villageService;
     @Autowired TickService tick;
+    @Autowired NobleService nobles;
 
     World world;
     Village attackerHome;
@@ -103,5 +104,17 @@ class ConquestMovementsTest {
 
         int light = stocks.findByVillageAndType(target, UnitType.LIGHT).map(UnitStock::getCount).orElse(0);
         assertEquals(0, light); // the conqueror must not get the old owner's raiders
+    }
+
+    @Test
+    void theConqueringNoblemanIsUsedUp() {
+        conquerTarget();
+
+        List<Movement> home = returningTo(attackerHome);
+        assertEquals(1, home.size()); // the escort walks home...
+        assertEquals(0, home.get(0).getUnits().getOrDefault(UnitType.SNOB, 0)); // ...without the nobleman
+        NobleService.Info info = nobles.info(attackerHome.getOwner(), world);
+        assertEquals(0, info.existing());
+        assertEquals(1, info.conquered());
     }
 }

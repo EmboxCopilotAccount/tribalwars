@@ -203,7 +203,8 @@ public class CombatService {
         destroyed.forEach((t, n) -> detail.put("dmg:" + t.name(), n));
 
         // noblemen: however many survive a won battle, the group acts as ONE nobleman: a single loyalty drop. Lowering the
-        // loyalty does not use a nobleman up: they die only in the battle itself (the normal losses) and otherwise come home
+        // loyalty does not use a nobleman up: they die in the battle itself (the normal losses) and otherwise come home -
+        // except one that conquers the village, which stays there (used up, see below)
         Integer loyaltyFrom = null;
         Integer loyaltyTo = null;
         boolean conquered = false;
@@ -307,6 +308,9 @@ public class CombatService {
             }
             conquests.conquer(defenderVillage, attackerOwner);
             achievements.onConquest(attackerOwner, defenderVillage.getWorld());
+            // the nobleman that took the village stays in it for good: used up, so it neither walks home
+            // nor counts as an existing nobleman next to the conquest (NobleService.info)
+            survivors.computeIfPresent(UnitType.SNOB, (t, n) -> n > 1 ? n - 1 : null);
         }
 
         if (attackerOwner != null && attackerOwner.isNpc()) {
