@@ -160,8 +160,8 @@ export const ORDER = ["main", "barracks", "stable", "garage", "snob", "smith", "
 
 export const ID_BY_TYPE = Object.fromEntries(ORDER.filter((id) => B[id].type).map((id) => [B[id].type, id]));
 
-/* Screens that the original renders as the "page couldn't be found" box. */
-export const MISSING_CLASS = { farm: "Farm", market: "Market", church: "Church", watchtower: "Watchtower" };
+/* Screens that the original renders as the "page couldn't be found" box (the farm has a page here: FarmBody). */
+export const MISSING_CLASS = { market: "Market", church: "Church", watchtower: "Watchtower" };
 
 /* Accepts a backend type ("HEADQUARTERS") or an original screen id ("main"). */
 export function resolveId(t) {
@@ -174,7 +174,7 @@ export function resolveId(t) {
 
 /* App routing key for a building. */
 export function screenKey(id, level) {
-  if (MISSING_CLASS[id]) return id === "farm" ? "building:FARM" : id;
+  if (MISSING_CLASS[id]) return id;
   if (id === "place") return "place";
   // the original's screen=barracks|stable|garage is the recruitment screen once the building exists
   if ((id === "barracks" || id === "stable" || id === "garage") && level > 0) return id;
@@ -357,6 +357,8 @@ export const hideCapacity = (level) => Math.round(150 * Math.pow(1.333500530983,
 export const pitProduction = (level) => (level <= 0 ? 5 : Math.round(30 * Math.pow(1.1631180425543, level - 1)));
 
 /* Warehouse capacity at a level (backend curve). */
+// BuildingType.farmCapacity
+export const farmCapacityAt = (level) => Math.round(240 * Math.pow(1.1721022975335, Math.max(level, 1) - 1));
 export const warehouseCapacityAt = (level) => Math.round(1000 * Math.pow(1.2294934136946, Math.max(level, 1) - 1));
 
 /* ------------------------------------------------------------------------------------------

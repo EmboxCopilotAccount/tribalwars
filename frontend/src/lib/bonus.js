@@ -6,7 +6,7 @@ export const BONUS = {
   1: { image: "wood", text: "+100% wood production", production: { wood: 2 } },
   2: { image: "stone", text: "+100% clay production", production: { stone: 2 } },
   3: { image: "iron", text: "+100% iron production", production: { iron: 2 } },
-  4: { image: "farm", text: "+10% population" },
+  4: { image: "farm", text: "+10% population", population: 1.1 },
   5: { image: "barracks", text: "Recruitment in the barracks is 33% faster", recruit: { building: "barracks", factor: 1 / 1.5 } },
   6: { image: "stable", text: "Recruitment in the stable is 33% faster", recruit: { building: "stable", factor: 1 / 1.5 } },
   7: { image: "garage", text: "Recruitment in the workshop is 50% faster", recruit: { building: "garage", factor: 0.5 } },
@@ -25,3 +25,5 @@ export function recruitFactor(code, building) {
 /* The factor a bonus puts on one resource's production (res: wood / stone / iron) and on the warehouse (1 = none). */
 export const productionFactor = (code, res) => bonusOf(code)?.production?.[res] ?? 1;
 export const capacityFactor = (code) => bonusOf(code)?.capacity ?? 1;
+/* The factor a bonus puts on the farm's population (1 = none), like BonusType.populationFactor. */
+export const populationFactor = (code) => bonusOf(code)?.population ?? 1;

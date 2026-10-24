@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
 import { fmtDuration, onTime } from "../lib/data";
-import { capacityFactor, productionFactor } from "../lib/bonus";
+import { capacityFactor, populationFactor, productionFactor } from "../lib/bonus";
 import { GreyNum, MissingScreen, Timer } from "../lib/ui";
 import { SmithBody } from "./buildings/SmithBody";
 import { SnobBody } from "./buildings/SnobBody";
@@ -25,6 +25,7 @@ import {
   showMessage,
   useLiveRes,
   wallStats,
+  farmCapacityAt,
   warehouseCapacityAt,
 } from "../lib/buildings";
 
@@ -472,6 +473,67 @@ function PitBody({ village, id, level }) {
 /* --------------------------------------------------------------- storage */
 
 /* game/storage/index.php */
+/* farm: the original has no page for it ("couldn't be found"); this one shows the population like the warehouse page
+   shows the storage. Capacity: BuildingType.farmCapacity * the bonus village factor, rounded down (VillageService). */
+function FarmBody({ village, level }) {
+  const cap = village.populationCapacity;
+  const used = village.populationUsed;
+  return (
+    <>
+      <br />
+      <table className="vis " width="600px">
+        <tbody>
+          <tr>
+            <th>Population</th>
+            <th>Farmers</th>
+          </tr>
+          <tr>
+            <td>Current maximum population</td>
+            <td width="160px">
+              <b>
+                <GreyNum n={cap} />
+              </b>
+            </td>
+          </tr>
+          {level < B.farm.max && (
+            <tr>
+              <td>{`Maximum population on level ${level + 1} `}</td>
+              <td>
+                <b>
+                  <GreyNum n={Math.floor(farmCapacityAt(level + 1) * populationFactor(village.bonus))} />
+                </b>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <br />
+      <table className="vis " width="600px">
+        <tbody>
+          <tr>
+            <th>Farmers in use</th>
+            <th>Farmers</th>
+          </tr>
+          <tr>
+            <td>Buildings and troops (at home, on the road, as support and being recruited)</td>
+            <td width="160px">
+              <GreyNum n={used} />
+            </td>
+          </tr>
+          <tr>
+            <td>Free</td>
+            <td>
+              <b>
+                <GreyNum n={Math.max(0, cap - used)} />
+              </b>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 function StorageBody({ village, level }) {
   const live = useLiveRes(village);
   const cap = village.warehouseCapacity;
@@ -693,6 +755,7 @@ function BuildingPage({ village, id, onBuild, onCancelBuild, onFinishBuild, onRe
   if (id === "main") body = <MainBody village={village} go={go} onBuild={onBuild} onCancelBuild={onCancelBuild} onFinishBuild={onFinishBuild} onRename={onRename} />;
   else if (PIT_RES[id]) body = <PitBody village={village} id={id} level={level} />;
   else if (id === "storage") body = <StorageBody village={village} level={level} />;
+  else if (id === "farm") body = <FarmBody village={village} level={level} />;
   else if (id === "hide") body = <HideBody village={village} level={level} />;
   else if (id === "wall") body = <WallBody village={village} level={level} />;
   else if (id === "smith") body = <SmithBody village={village} onResearch={onResearch} onCancelResearch={onCancelResearch} />;
