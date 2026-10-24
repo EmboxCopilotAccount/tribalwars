@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.*;
 
-// Support to a tribe-mate's village: the troops stay there (StationedTroops), defend it, and can be recalled by
+// Support to another of your own villages or a tribe-mate's: the troops stay there (StationedTroops), defend it, and can be recalled by
 // their owner or sent back by the host. Leaving a tribe, conquering the host village or deleting a village sends the
 // troops home.
 @Service

@@ -27,10 +27,11 @@ public class NobleService {
     private final MovementRepository movements;
     private final VillageService villageService;
     private final AchievementService achievements;
+    private final StationedTroopsRepository stationed;
 
     public NobleService(NobleCoinsRepository coinRepository, VillageRepository villages, UnitStockRepository unitStock,
                         TrainQueueItemRepository trainQueue, MovementRepository movements, VillageService villageService,
-                        AchievementService achievements) {
+                        AchievementService achievements, StationedTroopsRepository stationed) {
         this.coinRepository = coinRepository;
         this.villages = villages;
         this.unitStock = unitStock;
@@ -38,6 +39,7 @@ public class NobleService {
         this.movements = movements;
         this.villageService = villageService;
         this.achievements = achievements;
+        this.stationed = stationed;
     }
 
     static int coinsForLimit(int n) { return n * (n + 1) / 2; }
@@ -75,6 +77,7 @@ public class NobleService {
                     existing += m.getUnits().getOrDefault(UnitType.SNOB, 0);
                 }
             }
+            for (StationedTroops s : stationed.findByOriginVillage(v)) existing += s.getUnits().getOrDefault(UnitType.SNOB, 0);
         }
         int possible = Math.max(0, limit - existing - inProduction - c.getConquered());
         return new Info(c.getCoins(), limit, existing, inProduction, c.getConquered(), possible,

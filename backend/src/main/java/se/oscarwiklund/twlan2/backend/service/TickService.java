@@ -188,11 +188,14 @@ public class TickService {
             if (movement.getType() == MovementType.SUPPORT) {
                 Village origin = movement.getOriginVillage();
                 Village target = movement.getTargetVillage();
-                if (MovementService.isSameOwner(origin, target)) {
+                boolean own = MovementService.isSameOwner(origin, target);
+                if (own && origin.getOwner().isNpc()) {
+                    // NPCs move troops between their villages for good (a dodge): they never withdraw stationed armies
                     for (Map.Entry<UnitType, Integer> e : movement.getUnits().entrySet()) {
                         addUnits(target, e.getKey(), e.getValue());
                     }
-                } else if (tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
+                } else if (own || tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
+                    // still the origin village's troops (its farm, withdrawable), also between a player's own villages
                     support.station(origin, target, movement.getUnits());
                 } else {
                     // the target changed hands (or the tribe was left) while the troops were on the road: they turn around
