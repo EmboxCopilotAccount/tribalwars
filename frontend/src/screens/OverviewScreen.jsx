@@ -507,10 +507,8 @@ function Notes() {
   );
 }
 
-const displayName = (v) => `${v.name} (${v.x}|${v.y}) K${Math.floor(v.y / 100)}${Math.floor(v.x / 100)}`;
-
 /* ---------- page ---------- */
-export function OverviewScreen({ village, villages = [], go, onBuild, busy, onCancelBuild, fetchedAt }) {
+export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, fetchedAt }) {
   const [visual, setVisualState] = useState(() => lsGet("twlan_ov_visual", true));
   const [showLevels, setShowLevelsState] = useState(() => lsGet("twlan_ov_labels", true));
   const [order, setOrder] = useState(() => lsGet("twlan_ov_order", DEFAULT_ORDER));
@@ -528,12 +526,7 @@ export function OverviewScreen({ village, villages = [], go, onBuild, busy, onCa
 
   const levels = sceneLevels(village);
   const ctx = { village, fetchedAt: fetchedAt ?? Date.now() };
-  const byName = (name) => villages.find((v) => v.name === name);
-  const nameOf = (name) => {
-    const v = byName(name);
-    return v ? displayName(v) : name;
-  };
-  const own = [...village.outgoingMovements, ...village.incomingMovements].map((m) => ({ ...m, ...commandInfo(m, nameOf) }));
+  const own = [...village.outgoingMovements, ...village.incomingMovements].map((m) => ({ ...m, ...commandInfo(m) }));
 
   // widget id -> { active, body } | null (null = the original's template renders nothing -> widget is skipped)
   const widget = (id) => {

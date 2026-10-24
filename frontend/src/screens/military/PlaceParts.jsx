@@ -67,14 +67,10 @@ export function PlaceHeader({ mode, navigate }) {
 }
 
 /* ---------------- troop movements (own / foreign commands) ---------------- */
-export function CommandTables({ village, villages, go }) {
-  const byName = (name) => {
-    const v = villages.find((x) => x.name === name);
-    return v ? villageDisplayName(v) : name;
-  };
+export function CommandTables({ village, go }) {
   const own = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
     ...m,
-    ...commandInfo(m, byName),
+    ...commandInfo(m),
   })).sort((a, b) => new Date(a.arrivesAt) - new Date(b.arrivesAt));
   if (own.length === 0) return null;
   return (
@@ -350,7 +346,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
 }
 
 /* ---------------- command form (command.php) ---------------- */
-export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, villages, go }) {
+export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, go }) {
   const [selectAll, setSelectAll] = useState(false);
   const clicked = useRef("attack");
 
@@ -502,7 +498,7 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
       </div>
       {/* TODO */}
       <h3 style={{ clear: "both" }}>Troop Movements</h3>
-      <CommandTables village={village} villages={villages} go={go} />
+      <CommandTables village={village} go={go} />
     </>
   );
 }

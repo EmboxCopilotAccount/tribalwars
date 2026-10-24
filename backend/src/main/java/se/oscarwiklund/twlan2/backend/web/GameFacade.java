@@ -171,11 +171,13 @@ public class GameFacade {
                 .map(m -> m.getType() == MovementType.ATTACK
                         // what an enemy sends is not shown, only that it is coming
                         ? new MovementDto(m.getId(), "INCOMING_ATTACK", m.getOriginVillage().getName(), m.getArrivesAt(), Map.of(),
-                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0)
+                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY())
                         : new MovementDto(m.getId(), m.getType() == MovementType.RETURN ? "RETURNING" : "SUPPORT_IN",
                                 m.getOriginVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
                                 m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(),
-                                m.getCarriedWood(), m.getCarriedClay(), m.getCarriedIron()))
+                                m.getCarriedWood(), m.getCarriedClay(), m.getCarriedIron(),
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY()))
                 .toList();
 
         TrainService.PaladinStatus paladin = trainService.paladinStatus(village);
@@ -270,7 +272,8 @@ public class GameFacade {
 
     private MovementDto toOutgoingDto(Movement m) {
         return new MovementDto(m.getId(), m.getType() == MovementType.SUPPORT ? "SUPPORTING" : "ATTACKING", m.getTargetVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
-                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0);
+                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
+                m.getTargetVillage().getX(), m.getTargetVillage().getY());
     }
 
     @Transactional(readOnly = true)
