@@ -183,6 +183,8 @@ public class TickService {
 
     private void processMovements(Instant now) {
         for (Movement movement : movementRepository.findByArrivesAtLessThanEqualOrderByArrivesAtAscIdAsc(now)) {
+            // an earlier arrival in this same tick may have removed it (a conquest drops the old owner's commands)
+            if (!movementRepository.existsById(movement.getId())) continue;
             live.village(movement.getOriginVillage());
             live.village(movement.getTargetVillage());
             if (movement.getType() == MovementType.SUPPORT) {
@@ -242,9 +244,10 @@ public class TickService {
                 if (movement.getCarriedWood() > 0 || movement.getCarriedClay() > 0 || movement.getCarriedIron() > 0) {
                     villageService.settleResources(home);
                     int capacity = villageService.warehouseCapacity(home);
-                    home.setWood(Math.min(capacity, home.getWood() + movement.getCarriedWood()));
-                    home.setClay(Math.min(capacity, home.getClay() + movement.getCarriedClay()));
-                    home.setIron(Math.min(capacity, home.getIron() + movement.getCarriedIron()));
+                    // loot fills up to the warehouse, but never lowers a stock that is already above it
+                    home.setWood(Math.max(home.getWood(), Math.min(capacity, home.getWood() + movement.getCarriedWood())));
+                    home.setClay(Math.max(home.getClay(), Math.min(capacity, home.getClay() + movement.getCarriedClay())));
+                    home.setIron(Math.max(home.getIron(), Math.min(capacity, home.getIron() + movement.getCarriedIron())));
                 }
                 movementRepository.delete(movement);
             }

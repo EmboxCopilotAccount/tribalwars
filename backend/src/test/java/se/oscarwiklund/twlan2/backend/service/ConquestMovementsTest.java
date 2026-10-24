@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.AccountRepository;
 import se.oscarwiklund.twlan2.backend.repo.MovementRepository;
+import se.oscarwiklund.twlan2.backend.repo.ResearchQueueItemRepository;
 import se.oscarwiklund.twlan2.backend.repo.UnitStockRepository;
 import se.oscarwiklund.twlan2.backend.repo.VillageRepository;
 
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // What happens to troops on the road when a village is conquered.
 @SpringBootTest
@@ -30,6 +32,7 @@ class ConquestMovementsTest {
     @Autowired VillageService villageService;
     @Autowired TickService tick;
     @Autowired NobleService nobles;
+    @Autowired ResearchQueueItemRepository researchQueue;
 
     World world;
     Village attackerHome;
@@ -86,14 +89,7 @@ class ConquestMovementsTest {
 
     @Test
     void theOldOwnersTroopsDoNotJoinTheConqueror() {
-        Village camp = new Village();
-        camp.setName("Abandoned Camp");
-        camp.setWorld(world);
-        camp.setOwnerType(OwnerType.BARBARIAN);
-        camp.setX(target.getX() < 500 ? target.getX() + 3 : target.getX() - 3);
-        camp.setY(target.getY());
-        camp.setResourcesSettledAt(Instant.now());
-        villages.save(camp);
+        Village camp = camp();
         send(target, camp, MovementType.ATTACK, Map.of(UnitType.LIGHT, 50), Instant.now().minusSeconds(2));
         tick.tick(); // the defender's raid sets off home
         assertEquals(1, returningTo(target).size());
@@ -116,5 +112,45 @@ class ConquestMovementsTest {
         NobleService.Info info = nobles.info(attackerHome.getOwner(), world);
         assertEquals(0, info.existing());
         assertEquals(1, info.conquered());
+    }
+
+    private Village camp() {
+        Village camp = new Village();
+        camp.setName("Abandoned Camp");
+        camp.setWorld(world);
+        camp.setOwnerType(OwnerType.BARBARIAN);
+        camp.setX(target.getX() < 500 ? target.getX() + 3 : target.getX() - 3);
+        camp.setY(target.getY());
+        camp.setResourcesSettledAt(Instant.now());
+        return villages.save(camp);
+    }
+
+    @Test
+    void aCommandOfTheOldOwnerDueInTheSameTickIsDropped() {
+        Village camp = camp();
+        Movement raid = send(target, camp, MovementType.ATTACK, Map.of(UnitType.LIGHT, 50), Instant.now().minusSeconds(1));
+        send(attackerHome, target, MovementType.ATTACK, Map.of(UnitType.AXE, 500, UnitType.SNOB, 1), Instant.now().minusSeconds(2));
+
+        tick.tick(); // the conquest comes first; the raid was already in this tick's list
+
+        assertEquals(attackerHome.getOwner().getId(), villages.findById(target.getId()).orElseThrow().getOwner().getId());
+        assertTrue(movements.findById(raid.getId()).isEmpty());
+        assertEquals(0, returningTo(target).size()); // no raiders walking "home" to the conqueror
+    }
+
+    @Test
+    void theOldOwnersResearchIsCancelled() {
+        ResearchQueueItem r = new ResearchQueueItem();
+        r.setVillage(target);
+        r.setUnit(UnitType.AXE);
+        r.setDurationSeconds(3600);
+        r.setStartedAt(Instant.now());
+        r.setCompletesAt(Instant.now().plusSeconds(3600));
+        r.setPosition(0);
+        researchQueue.save(r);
+
+        conquerTarget();
+
+        assertTrue(researchQueue.findByVillageOrderByPositionAsc(target).isEmpty());
     }
 }

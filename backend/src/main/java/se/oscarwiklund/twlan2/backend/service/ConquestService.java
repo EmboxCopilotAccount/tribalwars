@@ -19,6 +19,7 @@ public class ConquestService {
     private final VillageRepository villages;
     private final BuildQueueItemRepository buildQueue;
     private final TrainQueueItemRepository trainQueue;
+    private final ResearchQueueItemRepository researchQueue;
     private final UnitStockRepository unitStock;
     private final MovementRepository movements;
     private final VillageService villageService;
@@ -32,8 +33,10 @@ public class ConquestService {
     public ConquestService(LiveUpdates live, VillageRepository villages, BuildQueueItemRepository buildQueue, TrainQueueItemRepository trainQueue,
                            UnitStockRepository unitStock, MovementRepository movements, VillageService villageService, NobleService nobles,
                            BuildingRepository buildings, SupportService support, GroupService groups, MarketService market,
-                           se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel) {
+                           se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel,
+                           ResearchQueueItemRepository researchQueue) {
         this.live = live;
+        this.researchQueue = researchQueue;
         this.market = market;
         this.support = support;
         this.groups = groups;
@@ -64,6 +67,7 @@ public class ConquestService {
         support.villageConquered(village); // guests go home, the old owner's stationed armies are lost with it
         buildQueue.deleteAll(buildQueue.findByVillageOrderByPositionAsc(village));
         trainQueue.deleteAll(trainQueue.findByVillageOrderByPositionAsc(village));
+        researchQueue.deleteAll(researchQueue.findByVillageOrderByPositionAsc(village)); // (what is researched stays)
         unitStock.deleteAll(unitStock.findByVillage(village));
         List<Movement> own = movements.findByOriginVillageOrTargetVillage(village, village);
         for (Movement m : own) {
