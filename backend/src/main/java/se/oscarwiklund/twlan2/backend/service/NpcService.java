@@ -261,10 +261,13 @@ public class NpcService {
         for (BuildQueueItem q : buildQueue.findByVillageOrderByPositionAsc(v)) if (q.getCompletesAt() != null) due = Math.min(due, q.getCompletesAt().toEpochMilli());
         for (TrainQueueItem q : trainQueue.findByVillageOrderByPositionAsc(v)) if (q.getCompletesAt() != null) due = Math.min(due, q.getCompletesAt().toEpochMilli());
         for (Movement m : view.from(v)) {
+            if (m.getType() != MovementType.ATTACK) continue;
             long home = m.getArrivesAt().toEpochMilli();
-            if (m.getType() == MovementType.ATTACK && m.getDepartedAt() != null) home += home - m.getDepartedAt().toEpochMilli(); // and back again
-            if (m.getType() == MovementType.RETURN || m.getType() == MovementType.ATTACK) due = Math.min(due, home);
+            if (m.getDepartedAt() != null) home += home - m.getDepartedAt().toEpochMilli(); // and back again
+            due = Math.min(due, home);
         }
+        // troops on their way back start at the village they hit: they are found by their target
+        for (Movement m : view.targeting(v)) if (m.getType() == MovementType.RETURN) due = Math.min(due, m.getArrivesAt().toEpochMilli());
         return due;
     }
 
