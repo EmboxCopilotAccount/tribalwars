@@ -277,7 +277,9 @@ export function buildState(village, id, info, live) {
   const b = B[id];
   // Buildings the backend does not model look buildable; clicking answers with the original's server error.
   if (!b.type) return { ok: true };
-  if (info.pop > village.populationCapacity - village.populationUsed) return { ok: false, text: "Farm too small" };
+  // the server also keeps free the farm space of the orders already in the build queue
+  const reserved = (village.buildQueue ?? []).reduce((sum, q) => sum + (q.popIncrease ?? 0), 0);
+  if (info.pop > village.populationCapacity - village.populationUsed - reserved) return { ok: false, text: "Farm too small" };
   const enough = live.wood >= info.wood && live.stone >= info.stone && live.iron >= info.iron;
   if (enough) return { ok: true };
   const cap = village.warehouseCapacity;

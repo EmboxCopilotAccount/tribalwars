@@ -151,7 +151,8 @@ public class GameFacade {
 
         List<BuildQueueDto> buildQueueDtos = queue.stream()
                 .map(q -> new BuildQueueDto(q.getType().name(), q.getTargetLevel(), q.getStartedAt(), q.getCompletesAt(), q.getId(),
-                        q.getType().buildTimeSeconds(q.getTargetLevel(), hqLevel, settings.speedOf(village), hqTimeFactor)))
+                        q.getType().buildTimeSeconds(q.getTargetLevel(), hqLevel, settings.speedOf(village), hqTimeFactor),
+                        q.getType().popIncrease(q.getTargetLevel())))
                 .toList();
 
         Map<String, Integer> units = new LinkedHashMap<>();
