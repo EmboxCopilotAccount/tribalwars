@@ -267,8 +267,8 @@ export function formatWhen(ms) {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  if (today.getDate() === d.getDate()) return `today at ${time}`;
-  if (tomorrow.getDate() === d.getDate()) return `tomorrow at ${time}`;
+  if (today.toDateString() === d.toDateString()) return `today at ${time}`; // whole date: the 24th of next month is not "today"
+  if (tomorrow.toDateString() === d.toDateString()) return `tomorrow at ${time}`;
   return `on ${p(d.getDate())}.${p(d.getMonth() + 1)}. at ${time}`;
 }
 
