@@ -102,8 +102,8 @@ public class BuildService {
         return buildQueueItemRepository.save(item);
     }
 
-    // World settings "buildqueueStart"/"buildqueueMultiply".
-    private double queueCostMultiplier(World world, int position) {
+    // World settings "buildqueueStart"/"buildqueueMultiply": the price factor of an order at this queue position.
+    public static double queueCostMultiplier(World world, int position) {
         int freeSlots = (int) WorldSettings.number(world, "buildqueueStart");
         double multiply = WorldSettings.number(world, "buildqueueMultiply");
         int extra = position - freeSlots + 1;

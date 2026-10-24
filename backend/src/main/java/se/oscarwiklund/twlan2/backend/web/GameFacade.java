@@ -3,6 +3,7 @@ package se.oscarwiklund.twlan2.backend.web;
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.*;
 import se.oscarwiklund.twlan2.backend.service.AuthService;
+import se.oscarwiklund.twlan2.backend.service.BuildService;
 import se.oscarwiklund.twlan2.backend.service.GameSettings;
 import se.oscarwiklund.twlan2.backend.service.MailService;
 import se.oscarwiklund.twlan2.backend.service.MarketService;
@@ -116,6 +117,12 @@ public class GameFacade {
                 .orElseThrow(() -> new IllegalArgumentException("That is not your village."));
     }
 
+    // rounded up, so the screens never offer an order the server would refuse for a fraction of a resource
+    private static int withSurcharge(int cost, double factor) {
+        return (int) Math.ceil(cost * factor - 1e-9);
+    }
+
+    // must run in a transaction: open-in-view is off, and a movement's units load lazily
     @Transactional
     public VillageStateDto toDto(Village village) {
         villageService.settleResources(village);
@@ -125,15 +132,17 @@ public class GameFacade {
         double hqTimeFactor = WorldSettings.number(village.getWorld(), "buildMainFactor");
         List<BuildQueueItem> queue = buildQueueItemRepository.findByVillageOrderByPositionAsc(village);
 
+        // the next order lands at the end of the queue and pays that position's surcharge (BuildService.enqueue)
+        double queueFactor = BuildService.queueCostMultiplier(village.getWorld(), queue.size());
         List<BuildingDto> buildings = Arrays.stream(BuildingType.values()).map(type -> {
             int level = villageService.levelOf(village, type);
             long queuedOfType = queue.stream().filter(q -> q.getType() == type).count();
             int targetLevel = level + (int) queuedOfType + 1;
             boolean maxed = targetLevel > type.maxLevel;
             return new BuildingDto(type.name(), level, type.maxLevel, maxed,
-                    maxed ? 0 : type.woodCost(targetLevel),
-                    maxed ? 0 : type.clayCost(targetLevel),
-                    maxed ? 0 : type.ironCost(targetLevel),
+                    maxed ? 0 : withSurcharge(type.woodCost(targetLevel), queueFactor),
+                    maxed ? 0 : withSurcharge(type.clayCost(targetLevel), queueFactor),
+                    maxed ? 0 : withSurcharge(type.ironCost(targetLevel), queueFactor),
                     maxed ? 0 : type.buildTimeSeconds(targetLevel, hqLevel, settings.speedOf(village), hqTimeFactor),
                     maxed ? 0 : type.popIncrease(targetLevel),
                     type.requirements().entrySet().stream()
