@@ -67,6 +67,10 @@ public class RankingService {
         return kills;
     }
 
+    // What a ranking is ordered by: equal values share a rank (1, 1, 3), like the profile, stats and tribe pages.
+    private static long valueOf(PlayerRow r, boolean byKills) { return byKills ? r.kills() : r.points(); }
+    private static long valueOf(TribeRow r, boolean byKills) { return byKills ? r.kills() : r.points(); }
+
     // byKills orders by opponents defeated instead of points; ties fall back to points, then name.
     @Transactional(readOnly = true)
     public Ranking<PlayerRow> players(World world, Integer continent, boolean byKills) {
@@ -90,7 +94,8 @@ public class RankingService {
         List<PlayerRow> ranked = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             PlayerRow r = rows.get(i);
-            ranked.add(new PlayerRow(i + 1, r.id(), r.name(), r.tribeId(), r.tribeTag(), r.points(), r.villages(), r.kills()));
+            int rank = i > 0 && valueOf(rows.get(i - 1), byKills) == valueOf(r, byKills) ? ranked.get(i - 1).rank() : i + 1; // ties share a rank
+            ranked.add(new PlayerRow(rank, r.id(), r.name(), r.tribeId(), r.tribeTag(), r.points(), r.villages(), r.kills()));
         }
         return new Ranking<>(List.copyOf(continents), ranked);
     }
@@ -125,7 +130,8 @@ public class RankingService {
         List<TribeRow> ranked = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             TribeRow r = rows.get(i);
-            ranked.add(new TribeRow(i + 1, r.id(), r.name(), r.tag(), r.points(), r.members(), r.pointsPerPlayer(), r.villages(), r.pointsPerVillage(), r.kills()));
+            int rank = i > 0 && valueOf(rows.get(i - 1), byKills) == valueOf(r, byKills) ? ranked.get(i - 1).rank() : i + 1; // ties share a rank
+            ranked.add(new TribeRow(rank, r.id(), r.name(), r.tag(), r.points(), r.members(), r.pointsPerPlayer(), r.villages(), r.pointsPerVillage(), r.kills()));
         }
         return new Ranking<>(List.copyOf(continents), ranked);
     }

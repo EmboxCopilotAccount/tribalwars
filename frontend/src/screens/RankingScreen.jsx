@@ -67,9 +67,11 @@ export function rankPlayers(village, villages) {
       v.ownerTribeId ? { id: v.ownerTribeId, tag: v.ownerTribeTag } : null);
   }
   if (!byName.has(PLAYER_NAME)) add(PLAYER_NAME, villagePoints(village));
-  return [...byName.values()]
-    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
-    .map((p, i) => ({ ...p, id: i + 1, rank: i + 1 }));
+  const sorted = [...byName.values()].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  // ties share a rank (1, 1, 3), like the backend's rankings
+  const ranked = [];
+  sorted.forEach((p, i) => ranked.push({ ...p, id: i + 1, rank: i > 0 && sorted[i - 1].points === p.points ? ranked[i - 1].rank : i + 1 }));
+  return ranked;
 }
 
 const LOAD_FAILED = "The ranking could not be loaded (is the backend up to date?)";
