@@ -169,7 +169,7 @@ public class NpcMilitary {
             Map<UnitType, Integer> forThis = new EnumMap<>(army);
             var plan = AttackPlanner.plan(forThis, seen, wall, basicDefense, night, morale, margin, loot, d.farming() ? 0.3 : 0.5, rams);
             if (plan == null) continue;
-            double travelHours = MovementService.travelSeconds(v, t, plan.send(), speed) / 3600.0;
+            double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
             double score = w * (1 + Math.min(loot, plan.carry()) / 500.0) / (d.farming() ? 1 + travelHours : 1);
             strikes.add(new Strike(c, plan, basis, score));
         }

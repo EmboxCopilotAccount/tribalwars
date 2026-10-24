@@ -84,7 +84,7 @@ public class NpcDefence {
         // the pace of the army gives away its slowest unit (scouts ~9 min/field, light cavalry 10, axes 18, rams 30)
         double distance = Math.max(0.5, Math.hypot(from.getX() - v.getX(), from.getY() - v.getY()));
         double seconds = attack.getDepartedAt() == null ? 0 : java.time.Duration.between(attack.getDepartedAt(), attack.getArrivesAt()).toMillis() / 1000.0;
-        double minutesPerField = seconds <= 0 ? 30 : seconds * settings.speedOf(from) / 60 / distance;
+        double minutesPerField = seconds <= 0 ? 30 : seconds * settings.travelSpeedOf(from) / 60 / distance;
         Map<UnitType, Integer> estimate = DodgeDecision.estimateAttack(view.points(from), noise, minutesPerField);
         if (estimate.isEmpty()) return; // a scouting party: nothing to defend against
         var verdict = DodgeDecision.assess(estimate, home, wall, basic, night, 0.1);
@@ -120,7 +120,7 @@ public class NpcDefence {
             for (UnitStock s : unitStock.findByVillage(h)) if (s.getCount() > 0) spare.put(s.getType(), s.getCount());
             Map<UnitType, Integer> send = DodgeDecision.spareDefenders(spare, 0.6);
             if (AttackPlanner.pop(send) < 20) continue;
-            if (MovementService.travelSeconds(h, v, send, settings.speedOf(h)) > secondsLeft - 10) continue; // would be too late
+            if (MovementService.travelSeconds(h, v, send, settings.travelSpeedOf(h)) > secondsLeft - 10) continue; // would be too late
             try {
                 Movement m = movementService.sendSupport(h, v, send);
                 view.added(m);
@@ -144,7 +144,7 @@ public class NpcDefence {
         for (Village h : view.villages) {
             if (h.getId().equals(v.getId()) || h.getOwner() == null || !h.getOwner().getId().equals(me.getId()) || view.underAttack(h)) continue;
             double dist = Math.hypot(h.getX() - v.getX(), h.getY() - v.getY());
-            if (dist < bestDist && MovementService.travelSeconds(v, h, save, settings.speedOf(v)) < secondsLeft - 5) { best = h; bestDist = dist; }
+            if (dist < bestDist && MovementService.travelSeconds(v, h, save, settings.travelSpeedOf(v)) < secondsLeft - 5) { best = h; bestDist = dist; }
         }
         if (best == null) return;
         Movement m = movementService.sendSupport(v, best, save);
