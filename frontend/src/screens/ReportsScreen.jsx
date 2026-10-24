@@ -15,6 +15,7 @@ import {
   villageDisplayName,
 } from "../lib/military";
 import { useUnitPopup } from "./military/UnitPopup";
+import { reportLoot, scoutsOnly } from "../lib/farm";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -351,8 +352,9 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   const luck = Number(r.luck ?? 0);
   const p = luck < 0 ? -2 * luck : 0;
   const g = luck > 0 ? 2 * luck : 0;
-  const loot = { wood: Math.floor(r.lootWood ?? 0), stone: Math.floor(r.lootClay ?? 0), iron: Math.floor(r.lootIron ?? 0) };
-  const used = loot.wood + loot.stone + loot.iron;
+  const haul = reportLoot(r);
+  const loot = { wood: haul.wood, stone: haul.clay, iron: haul.iron };
+  const used = haul.total;
   const max = r.lootCapacity ?? used;
   const idx = reports.findIndex((x) => x.id === r.id);
   const next = reports[idx + 1] ?? r;
@@ -540,7 +542,7 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                       <br />
                       <table id="attack_results" width="100%" style={{ border: "1px solid #DED3B9" }}>
                         <tbody>
-                          {won && !r.spy?.level && (
+                          {won && !scoutsOnly(r) && (
                             <tr>
                               <th>Loot:</th>
                               <td width="250">
