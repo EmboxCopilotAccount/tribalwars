@@ -100,6 +100,12 @@ public final class BattleCalculator {
         return lost;
     }
 
+    // The wall the defenders fight behind: the rams batter it during the battle, half of them knocking off what they
+    // could destroy (classic: the rest of the damage only comes from the rams that survive a won battle).
+    public static int wallInBattle(int rams, int wall) {
+        return wall - levelsDestroyed(rams / 2, wall);
+    }
+
     // An attack made of scouts only: the larger side wins and loses (small/large)^1.5.
     public static Battle scoutDuel(int attackingScouts, int defendingScouts) {
         Map<UnitType, Integer> attLoss = new EnumMap<>(UnitType.class);

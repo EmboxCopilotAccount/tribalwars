@@ -97,6 +97,14 @@ class BattleCalculatorTest {
     }
 
     @Test
+    void ramsLowerTheWallTheBattleIsFoughtAt() {
+        assertEquals(20, BattleCalculator.wallInBattle(0, 20));
+        assertEquals(20 - BattleCalculator.levelsDestroyed(50, 20), BattleCalculator.wallInBattle(100, 20));
+        assertTrue(BattleCalculator.wallInBattle(100, 20) > 20 - BattleCalculator.levelsDestroyed(100, 20)); // only half before
+        assertEquals(0, BattleCalculator.wallInBattle(100_000, 20));
+    }
+
+    @Test
     void scoutDuel() {
         var win = BattleCalculator.scoutDuel(10, 0);
         assertTrue(win.attackerWins());

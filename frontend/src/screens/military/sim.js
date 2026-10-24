@@ -10,6 +10,17 @@ const num = (v) => {
 const CATEGORY = { infantry: "infantry", cavalry: "cavalry", archer: "archer", other: "infantry" };
 const kindOf = (u) => (u.id === "spy" ? "infantry" : CATEGORY[u.type] ?? "infantry");
 
+// BattleCalculator.wallInBattle: half the rams knock levels off the wall during the battle (1.2^level hits each, at least 2)
+function wallInBattle(rams, wall) {
+  let left = Math.floor(rams / 2);
+  let level = wall;
+  while (level > 0 && left >= Math.max(2, Math.ceil(Math.pow(1.2, level)))) {
+    left -= Math.max(2, Math.ceil(Math.pow(1.2, level)));
+    level--;
+  }
+  return level;
+}
+
 export function simulate({ att, def, wall = 0, moral = 100, luck = 0, night = false, beliefAtt = false, beliefDef = false }) {
   const attBefore = {};
   const defBefore = {};
@@ -37,7 +48,7 @@ export function simulate({ att, def, wall = 0, moral = 100, luck = 0, night = fa
   offTotal *= morale * luckF * faithAtt;
 
   // defence: weighted by what is attacking
-  const wallLevel = num(wall);
+  const wallLevel = wallInBattle(attBefore.ram ?? 0, num(wall));
   const wallBonus = Math.pow(1.037, wallLevel) * (night ? 2 : 1);
   let defTotal = 0;
   const shares =

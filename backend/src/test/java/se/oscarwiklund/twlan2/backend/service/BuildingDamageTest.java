@@ -78,4 +78,39 @@ class BuildingDamageTest {
         tick.tick();
         assertEquals(rammed + 1, villageService.levelOf(target, BuildingType.WALL));
     }
+
+    @Test
+    void ramsDamageTheWallEvenWhenTheAttackFails() {
+        World world = worlds.createWorld("ram-loss-test", 1);
+        Village home = worlds.joinWorld(world, account("rammer"));
+        Village target = worlds.joinWorld(world, account("walled"));
+        stocks.deleteAll(stocks.findByVillage(target));
+        UnitStock spears = new UnitStock();
+        spears.setVillage(target);
+        spears.setType(UnitType.SPEAR);
+        spears.setCount(5000);
+        stocks.save(spears);
+        Building wall = buildings.findByVillageAndType(target, BuildingType.WALL).orElseGet(() -> {
+            Building b = new Building();
+            b.setVillage(target);
+            b.setType(BuildingType.WALL);
+            return b;
+        });
+        wall.setLevel(10);
+        buildings.save(wall);
+
+        Movement attack = new Movement();
+        attack.setOriginVillage(home);
+        attack.setTargetVillage(target);
+        attack.setType(MovementType.ATTACK);
+        attack.getUnits().putAll(Map.of(UnitType.RAM, 100));
+        attack.setDepartedAt(Instant.now().minusSeconds(600));
+        attack.setArrivesAt(Instant.now().minusSeconds(1));
+        movements.save(attack);
+        tick.tick();
+
+        assertTrue(movements.findByOriginVillageOrTargetVillage(home, home).isEmpty()); // the rams died...
+        assertEquals(BattleCalculator.wallInBattle(100, 10), villageService.levelOf(target, BuildingType.WALL)); // ...but hit the wall
+        assertTrue(villageService.levelOf(target, BuildingType.WALL) < 10);
+    }
 }

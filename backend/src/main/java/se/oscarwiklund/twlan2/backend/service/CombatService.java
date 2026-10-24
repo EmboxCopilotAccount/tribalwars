@@ -129,7 +129,11 @@ public class CombatService {
             double luck = (ThreadLocalRandom.current().nextDouble() * 2 - 1) * BattleCalculator.MAX_LUCK;
             // night bonus: the defenders fight harder while the world's clock is inside its night hours
             double night = WorldSettings.isNight(world, java.time.LocalTime.now()) ? WorldSettings.number(world, "nightBonus") : 1;
-            BattleCalculator.Battle battle = BattleCalculator.fight(attackerUnits, defenderUnits, wallBefore, morale, luck,
+            // rams lower the wall the battle is fought at, and that damage stays whether the attack wins or not
+            if (WorldSettings.bool(world, "destroyBuildings")) {
+                wallAfter = BattleCalculator.wallInBattle(attackerUnits.getOrDefault(UnitType.RAM, 0), wallBefore);
+            }
+            BattleCalculator.Battle battle = BattleCalculator.fight(attackerUnits, defenderUnits, wallAfter, morale, luck,
                     night, WorldSettings.number(world, "basicDefense"));
             outcome = battle.attackerWins() ? BattleOutcome.ATTACKER_WIN : BattleOutcome.DEFENDER_WIN;
             attackerLosses = battle.attackerLosses();
@@ -173,13 +177,7 @@ public class CombatService {
         if (outcome == BattleOutcome.ATTACKER_WIN && !scoutsOnly && WorldSettings.bool(world, "destroyBuildings")) {
             int rams = survivors.getOrDefault(UnitType.RAM, 0);
             if (rams > 0 && wallBefore > 0) {
-                int lost = BattleCalculator.levelsDestroyed(rams, wallBefore);
-                if (lost > 0) {
-                    wallAfter = wallBefore - lost;
-                    damage(defenderVillage, BuildingType.WALL, wallAfter);
-                    destroyed.merge(BuildingType.WALL, lost, Integer::sum);
-                    achievements.count(attackerOwner, world, "wall_levels_destroyed", lost);
-                }
+                wallAfter = Math.min(wallAfter, wallBefore - BattleCalculator.levelsDestroyed(rams, wallBefore));
             }
             int catapults = survivors.getOrDefault(UnitType.CATAPULT, 0);
             if (catapults > 0) {
@@ -197,6 +195,12 @@ public class CombatService {
                     }
                 }
             }
+        }
+        if (wallAfter < wallBefore) {
+            int lost = wallBefore - wallAfter;
+            damage(defenderVillage, BuildingType.WALL, wallAfter);
+            destroyed.merge(BuildingType.WALL, lost, Integer::sum);
+            achievements.count(attackerOwner, world, "wall_levels_destroyed", lost);
         }
         detail.put("wall_before", wallBefore);
         detail.put("wall_after", wallAfter);
