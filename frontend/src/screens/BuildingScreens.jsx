@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
 import { fmtDuration, onTime } from "../lib/data";
+import { capacityFactor, productionFactor } from "../lib/bonus";
 import { GreyNum, MissingScreen, Timer } from "../lib/ui";
 import { SmithBody } from "./buildings/SmithBody";
 import { SnobBody } from "./buildings/SnobBody";
@@ -412,6 +413,7 @@ function PitBody({ village, id, level }) {
   const local = Math.round(pitProduction(level) * speed);
   const next = Math.round(pitProduction(level + 1) * speed);
   const total = Math.round(village[key]);
+  const nextTotal = Math.round(pitProduction(level + 1) * speed * productionFactor(village.bonus, res)); // a bonus village's extra grows with it
   return (
     <table className="vis" cellSpacing="1" cellPadding="3">
       <tbody>
@@ -444,7 +446,7 @@ function PitBody({ village, id, level }) {
           </td>
           {hasNext && (
             <td className="inactive">
-              <GreyNum n={total - local + next} />
+              <GreyNum n={nextTotal} />
             </td>
           )}
         </tr>
@@ -481,7 +483,7 @@ function StorageBody({ village, level }) {
               <td>{`Storage capacity on level ${level + 1} `}</td>
               <td>
                 <b>
-                  <GreyNum n={warehouseCapacityAt(level + 1)} />
+                  <GreyNum n={Math.round(warehouseCapacityAt(level + 1) * capacityFactor(village.bonus))} />
                 </b>
               </td>
             </tr>
