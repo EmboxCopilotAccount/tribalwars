@@ -362,9 +362,16 @@ export default function App() {
 
   const go = (e, target) => {
     if (e) e.preventDefault();
-    window.history.replaceState(null, "", "#" + encodeURIComponent(target).replace(/%3A/g, ":"));
+    const hash = "#" + encodeURIComponent(target).replace(/%3A/g, ":");
+    // each new screen is a browser history entry, so Back/Forward walk through the screens
+    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
     setScreen(target);
   };
+  useEffect(() => {
+    const onPop = () => setScreen(decodeURIComponent(window.location.hash.slice(1)) || "overview");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // HotKeys.js: "v" opens the village overview, "m" the map (ignored while typing)
   useEffect(() => {
