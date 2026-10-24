@@ -154,7 +154,8 @@ public class ResearchService implements CommandLineRunner {
             Village village = item.getVillage();
             grant(village, item.getUnit());
             queue.delete(item);
-            resequence(village, now);
+            // the next research starts when this one finished, not when the tick noticed (downtime, slow ticks)
+            resequence(village, item.getCompletesAt() != null && item.getCompletesAt().isBefore(now) ? item.getCompletesAt() : now);
             live.village(village);
         }
     }

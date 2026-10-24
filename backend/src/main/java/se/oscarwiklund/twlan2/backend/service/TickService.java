@@ -104,8 +104,8 @@ public class TickService {
             next.setPosition(i);
             if (i == 0 && next.getStartedAt() == null) {
                 int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
-                next.setStartedAt(now);
-                next.setCompletesAt(now.plusSeconds(next.getType().buildTimeSeconds(
+                next.setStartedAt(doneAt); // right when the previous order finished, not when the tick noticed
+                next.setCompletesAt(doneAt.plusSeconds(next.getType().buildTimeSeconds(
                         next.getTargetLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
             }
             buildQueueItemRepository.save(next);
@@ -163,7 +163,9 @@ public class TickService {
         for (TrainQueueItem item : finished) {
             Village village = item.getVillage();
             trainQueueItemRepository.deleteByIdSafe(item.getId());
-            trainQueues.resequence(village, now);
+            // the next order starts when this one's last unit was done, not when the tick noticed (downtime, slow ticks)
+            Instant doneAt = item.getStartedAt().plusSeconds(item.getPerUnitSeconds() * item.getTotalCount());
+            trainQueues.resequence(village, doneAt.isBefore(now) ? doneAt : now);
         }
     }
 
