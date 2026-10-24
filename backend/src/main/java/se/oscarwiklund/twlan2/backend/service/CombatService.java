@@ -6,6 +6,7 @@ import se.oscarwiklund.twlan2.backend.service.npc.NpcDifficulty;
 import se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService;
 import se.oscarwiklund.twlan2.backend.service.npc.NpcLogService;
 import se.oscarwiklund.twlan2.backend.service.npc.NpcOverrunCooldown;
+import se.oscarwiklund.twlan2.backend.repo.BuildQueueItemRepository;
 import se.oscarwiklund.twlan2.backend.repo.BuildingRepository;
 import se.oscarwiklund.twlan2.backend.repo.CombatReportRepository;
 import se.oscarwiklund.twlan2.backend.repo.MovementRepository;
@@ -39,13 +40,15 @@ public class CombatService {
     private final NpcLogService npcLog;
     private final NpcIntelService npcIntel;
     private final NpcOverrunCooldown overrun;
+    private final BuildQueueItemRepository buildQueue;
 
     public CombatService(LiveUpdates live, UnitStockRepository unitStockRepository, CombatReportRepository combatReportRepository,
                           VillageService villageService, AchievementService achievements, ConquestService conquests,
                           BuildingRepository buildingRepository, VillageRepository villageRepository,
                           MovementRepository movementRepository, SupportService support, WarService wars, NpcLogService npcLog,
-                          NpcIntelService npcIntel, NpcOverrunCooldown overrun) {
+                          NpcIntelService npcIntel, NpcOverrunCooldown overrun, BuildQueueItemRepository buildQueue) {
         this.live = live;
+        this.buildQueue = buildQueue;
         this.npcIntel = npcIntel;
         this.npcLog = npcLog;
         this.overrun = overrun;
@@ -383,6 +386,14 @@ public class CombatService {
         buildingRepository.findByVillageAndType(village, type).ifPresent(b -> {
             b.setLevel(Math.max(0, newLevel));
             buildingRepository.save(b);
+            // queued upgrades of it build on from the damaged level (each order is one level), instead of
+            // restoring the level they were ordered at when they complete
+            int next = b.getLevel();
+            for (BuildQueueItem q : buildQueue.findByVillageOrderByPositionAsc(village)) {
+                if (q.getType() != type) continue;
+                q.setTargetLevel(++next);
+                buildQueue.save(q);
+            }
         });
     }
 
