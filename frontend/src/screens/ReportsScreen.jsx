@@ -522,6 +522,7 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                               </tr>
                             </tbody>
                           </table>
+                          {r.morale != null && <h4>{`Morale: ${r.morale}%`}</h4>}
                         </div>
                       </div>
 
@@ -597,12 +598,6 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                                 ))}
                               </td>
                               <td>{`${used}/${max}`}</td>
-                            </tr>
-                          )}
-                          {r.morale != null && r.morale < 100 && (
-                            <tr>
-                              <th>Morale:</th>
-                              <td colSpan="2">{`${r.morale}%`}</td>
                             </tr>
                           )}
                           {r.wallBefore != null && r.wallAfter != null && r.wallAfter < r.wallBefore && (
