@@ -414,6 +414,9 @@ export const KNIGHT = { name: "Paladin", wood: 20, stone: 20, iron: 20, pop: 10,
 /* ---- Academy (world noblemanSystem "coins") ---- */
 /* Cost of one gold coin (world noblemanRes) and of the nobleman unit (units.json). */
 export const COIN_COST = { wood: 28000, stone: 30000, iron: 25000 };
+/* What a coin costs on this world (world settings coinWood/Clay/Iron, sent with village.nobles); the default above otherwise. */
+export const coinCost = (village) =>
+  village.nobles ? { wood: village.nobles.costWood, stone: village.nobles.costClay, iron: village.nobles.costIron } : COIN_COST;
 export const SNOB_UNIT = { population: 100, wood: 40000, stone: 50000, iron: 50000, time: 18000 };
 /* Recruit time of a unit at its building level: units.json time * 0.48 / 1.06^level (seen in the original's unit popup data). */
 export const nobleRecruitSeconds = (time, level) => Math.round((time * 0.48) / Math.pow(1.06, level));

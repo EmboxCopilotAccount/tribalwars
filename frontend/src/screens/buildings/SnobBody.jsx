@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { fmtDuration } from "../../lib/data";
-import { COIN_COST, SNOB_UNIT, formatWhen, levelOfId, nobleRecruitSeconds, showMessage, useLiveRes } from "../../lib/buildings";
+import { SNOB_UNIT, coinCost, formatWhen, levelOfId, nobleRecruitSeconds, showMessage, useLiveRes } from "../../lib/buildings";
 import { UNIT_BY_ID, useNowTick } from "../../lib/military";
 import { TrainQueue, queueEvents } from "../TrainScreen";
 import { useUnitPopup } from "../military/UnitPopup";
@@ -52,6 +52,7 @@ const NO_NOBLES = { coins: 0, limit: 0, existing: 0, inProduction: 0, conquered:
 
 function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }) {
   const NOBLE = { ...NO_NOBLES, ...(village.nobles ?? {}) };
+  const COIN = coinCost(village);
   const now = useNowTick();
   const possible = Math.max(0, NOBLE.possible);
   const errorAg = possible <= 0 ? "No more noblemen can be produced" : null;
@@ -60,11 +61,11 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }
   const events = queueEvents(village, now).filter((e) => e.unit === "snob");
   const live = useLiveRes(village);
   const cap = village.warehouseCapacity;
-  const enough = Object.entries(COIN_COST).every(([r, v]) => live[r] >= v);
+  const enough = Object.entries(COIN).every(([r, v]) => live[r] >= v);
   let coinError = null;
-  if (Math.max(...Object.values(COIN_COST)) > cap) coinError = "The warehouse is too small";
+  if (Math.max(...Object.values(COIN)) > cap) coinError = "The warehouse is too small";
   else if (!enough) {
-    const secs = Math.max(...Object.entries(COIN_COST).map(([r, v]) => ((v - live[r]) * 3600) / live.rate[r]));
+    const secs = Math.max(...Object.entries(COIN).map(([r, v]) => ((v - live[r]) * 3600) / live.rate[r]));
     coinError = `Resources available ${formatWhen(live.now + secs * 1000)}`;
   }
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -206,7 +207,7 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }
           </tr>
           <tr>
             <td>
-              {Object.entries(COIN_COST).map(([name, value]) => (
+              {Object.entries(COIN).map(([name, value]) => (
                 <Fragment key={name}>
                   <span className={`icon header ${name}`}></span> <NestedGrey n={value} />{" "}
                 </Fragment>
@@ -229,6 +230,7 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }
 }
 
 function CoinMode({ village, onMintCoin }) {
+  const COIN = coinCost(village);
   const live = useLiveRes(village);
   const [pageSize, setPageSize] = useState(5);
   const [pageSizeInput, setPageSizeInput] = useState("5");
@@ -237,7 +239,7 @@ function CoinMode({ village, onMintCoin }) {
   const vid = village.id;
 
   // every village of the player: the current one ticks live, the others show what the server last computed
-  const gmOf = (r, cap) => (Math.max(...Object.values(COIN_COST)) > cap ? 0 : Math.floor(Math.min(...Object.entries(COIN_COST).map(([k, v]) => r[k] / v))));
+  const gmOf = (r, cap) => (Math.max(...Object.values(COIN)) > cap ? 0 : Math.floor(Math.min(...Object.entries(COIN).map(([k, v]) => r[k] / v))));
   const maxGm = gmOf(live, village.warehouseCapacity);
   const villages = (village.myVillages?.length ? village.myVillages : [{ id: vid, name: village.name }]).map((v) =>
     v.id === vid
@@ -372,7 +374,7 @@ function CoinMode({ village, onMintCoin }) {
                     <option value="0">- None -</option>
                     {Array.from({ length: v.maxGm }, (_, i) => i + 1).map((c) => (
                       <option key={c} value={String(c)}>
-                        {`${c}x (${Object.values(COIN_COST).map((p) => p * c).join(", ")})`}
+                        {`${c}x (${Object.values(COIN).map((p) => p * c).join(", ")})`}
                       </option>
                     ))}
                   </select>
