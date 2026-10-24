@@ -85,14 +85,14 @@ public class NpcEconomy {
     // Orders the next building of the plan, saves for it, or builds something cheaper while it waits. NOTHING_LEFT
     // means the plan is finished (the caller may let the old weighted-random logic add more).
     @Transactional(noRollbackFor = {BuildService.BuildException.class, TrainService.TrainException.class})
-    public Build build(Village v, NpcArchetype archetype, NpcDifficulty d, Snapshot s, Random rnd) {
+    public Build build(Village v, NpcArchetype archetype, boolean expanding, NpcDifficulty d, Snapshot s, Random rnd) {
         if (s.build.size() >= (d.keepBusy() ? 3 : 2)) return Build.IDLE;
         villageService.settleResources(v);
 
         List<NpcGoals.Step> order = new ArrayList<>();
         int capacity = (int) Math.round(BuildingType.warehouseCapacity(s.level(BuildingType.WAREHOUSE)) * BonusType.capacityFactor(v));
         int popCap = (int) Math.floor(BuildingType.farmCapacity(s.level(BuildingType.FARM)) * BonusType.populationFactor(v));
-        List<NpcGoals.Step> plan = NpcGoals.next(archetype, s::levelWithQueue, 6);
+        List<NpcGoals.Step> plan = NpcGoals.next(archetype, expanding, s::levelWithQueue, 6);
         if (plan.isEmpty()) return Build.NOTHING_LEFT;
 
         NpcGoals.Step first = plan.get(0);

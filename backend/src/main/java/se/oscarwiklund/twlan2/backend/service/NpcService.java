@@ -239,7 +239,7 @@ public class NpcService {
             if (snap.build.size() < 2) build(v, snap, me);
             if (!recovering) recruit(v, me, snap);
         } else {
-            if (economy.build(v, archetype, difficulty, snap, rnd) == NpcEconomy.Build.NOTHING_LEFT && snap.build.size() < 2) {
+            if (economy.build(v, archetype, expanding(v, archetype, difficulty), difficulty, snap, rnd) == NpcEconomy.Build.NOTHING_LEFT && snap.build.size() < 2) {
                 build(v, snap, me); // the plan is finished: keep developing at random
             }
             if (!recovering) economy.recruit(v, archetype, skill, difficulty, snap, view.from(v), view.underAttack(v), rnd);
@@ -357,6 +357,12 @@ public class NpcService {
                 || ((archetype == NpcArchetype.RAIDER || archetype == NpcArchetype.BALANCED) && owner.getId() % 3 == 0);
     }
 
+    // Whether this NPC is meant to conquer villages on its world (and so needs an Academy).
+    private static boolean expanding(Village v, NpcArchetype archetype, NpcDifficulty difficulty) {
+        World world = v.getWorld();
+        return world != null && difficulty.expansionFor(world) != NpcDifficulty.Expansion.NONE && expands(archetype, v.getOwner());
+    }
+
     private static int noblesNeeded(World world) {
         return ConquestPlan.wavesNeeded(100, (int) WorldSettings.number(world, "noblemanMinDecrease"),
                 (int) WorldSettings.number(world, "noblemanMaxDecrease"), false);
@@ -371,7 +377,7 @@ public class NpcService {
     // Sets what the village has to keep aside for its next nobleman (troops are not paid from it), if it is meant to educate one.
     private void noblesWanted(Village v, NpcArchetype archetype, NpcDifficulty difficulty, NpcEconomy.Snapshot snap) {
         World world = v.getWorld();
-        if (world == null || difficulty.expansionFor(world) == NpcDifficulty.Expansion.NONE || !expands(archetype, v.getOwner())) return;
+        if (!expanding(v, archetype, difficulty)) return;
         if (snap.level(BuildingType.ACADEMY) < 1 || noblesHave(snap) >= noblesNeeded(world)) return;
         snap.nobleCost[0] = UnitType.SNOB.woodCost + WorldSettings.number(world, "coinWood");
         snap.nobleCost[1] = UnitType.SNOB.clayCost + WorldSettings.number(world, "coinClay");

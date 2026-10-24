@@ -84,6 +84,16 @@ public final class NpcGoals {
         return List.copyOf(goals);
     }
 
+    // An NPC that expands needs an Academy (and what it requires) even if its archetype's plan has none: it goes in
+    // two thirds of the way through the plan, like the conqueror's.
+    public static List<Goal> goals(NpcArchetype archetype, boolean expanding) {
+        List<Goal> plan = goals(archetype);
+        if (!expanding || plan.stream().anyMatch(g -> g.type() == ACADEMY)) return plan;
+        List<Goal> withAcademy = new ArrayList<>(plan);
+        withAcademy.add(plan.size() * 2 / 3, new Goal(ACADEMY, 1));
+        return withAcademy;
+    }
+
     public static List<Goal> goals(NpcArchetype archetype) {
         return switch (archetype) {
             case FARMER -> FARMER;
@@ -99,8 +109,12 @@ public final class NpcGoals {
     // at the level counted in `levelOf`, queued orders included). At most `limit` steps: the first is what the
     // NPC should build; the following ones are the cheaper alternatives to look at when it cannot afford the first.
     public static List<Step> next(NpcArchetype archetype, ToIntFunction<BuildingType> levelOf, int limit) {
+        return next(archetype, false, levelOf, limit);
+    }
+
+    public static List<Step> next(NpcArchetype archetype, boolean expanding, ToIntFunction<BuildingType> levelOf, int limit) {
         List<Step> steps = new ArrayList<>();
-        for (Goal goal : goals(archetype)) {
+        for (Goal goal : goals(archetype, expanding)) {
             if (steps.size() >= limit) break;
             if (levelOf.applyAsInt(goal.type()) >= goal.level()) continue;
             Step step = resolve(goal.type(), goal, levelOf, 0);

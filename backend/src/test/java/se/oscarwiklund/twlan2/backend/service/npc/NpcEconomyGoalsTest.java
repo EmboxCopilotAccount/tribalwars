@@ -142,4 +142,18 @@ class NpcEconomyGoalsTest {
         assertTrue(NpcArmy.armyShare(NpcArchetype.RAIDER, 1) > NpcArmy.armyShare(NpcArchetype.RAIDER, 0));
         assertTrue(NpcArmy.armyShare(NpcArchetype.RAIDER, 0.5) > NpcArmy.armyShare(NpcArchetype.TRADER, 0.5));
     }
+
+    @Test
+    void expandingNpcsOfEveryArchetypeEndUpWithAnAcademy() {
+        for (NpcArchetype a : NpcArchetype.values()) {
+            Map<BuildingType, Integer> levels = village();
+            for (int i = 0; i < 2000; i++) { // walk the whole plan
+                var steps = NpcGoals.next(a, true, t -> levels.getOrDefault(t, 0), 1);
+                if (steps.isEmpty()) break;
+                levels.put(steps.get(0).type(), steps.get(0).level());
+            }
+            assertTrue(levels.get(ACADEMY) >= 1, a + " never builds an Academy");
+        }
+        assertTrue(NpcGoals.goals(NpcArchetype.RAIDER, false).stream().noneMatch(g -> g.type() == ACADEMY)); // only when expanding
+    }
 }
