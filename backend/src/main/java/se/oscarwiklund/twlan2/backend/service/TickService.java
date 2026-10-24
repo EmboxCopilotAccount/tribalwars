@@ -177,7 +177,7 @@ public class TickService {
     }
 
     private void processMovements(Instant now) {
-        for (Movement movement : movementRepository.findByArrivesAtLessThanEqual(now)) {
+        for (Movement movement : movementRepository.findByArrivesAtLessThanEqualOrderByArrivesAtAscIdAsc(now)) {
             live.village(movement.getOriginVillage());
             live.village(movement.getTargetVillage());
             if (movement.getType() == MovementType.SUPPORT) {

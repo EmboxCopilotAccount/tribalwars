@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.List;
 
 public interface MovementRepository extends JpaRepository<Movement, Long> {
-    List<Movement> findByArrivesAtLessThanEqual(Instant now);
+    // in arrival order (ties: the order they were sent), so a clear timed just before its noblemen fights first
+    List<Movement> findByArrivesAtLessThanEqualOrderByArrivesAtAscIdAsc(Instant now);
     List<Movement> findByOriginVillageOrTargetVillage(Village origin, Village target);
     List<Movement> findByOriginVillageAndTargetVillageAndTypeAndDepartedAtAfter(Village origin, Village target, MovementType type, Instant after);
 }
