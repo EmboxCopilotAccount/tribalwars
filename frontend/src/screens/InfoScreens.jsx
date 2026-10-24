@@ -120,14 +120,14 @@ export function InfoCommandScreen({ id, village, villages = [], go }) {
   const m = all.find((x) => String(x.id) === String(id));
   if (!m) return <Missing text="This command no longer exists." />;
 
-  const nameOf = (n) => n;
-  const info = commandInfo(m, nameOf);
-  const at = (vid, fallbackName) => villages.find((x) => x.id === vid) ?? (vid === village.id ? village : { id: vid, name: fallbackName, x: 0, y: 0 });
-  const origin = at(m.originVillageId, m.otherVillageName);
-  const target = at(m.targetVillageId, m.otherVillageName);
+  const info = commandInfo(m);
+  // a village missing from the list can only be the other end of the command, whose name and coordinates it carries
+  const at = (vid) => villages.find((x) => x.id === vid) ?? (vid === village.id ? village : { id: vid, name: m.otherVillageName, x: m.otherX, y: m.otherY });
+  const origin = at(m.originVillageId);
+  const target = at(m.targetVillageId);
   const villageCell = (v) => (
     <>
-      <a href="#" onClick={(e) => go(e, "info_village:" + v.id)}>{v.x || v.y ? villageDisplayName(v) : v.name}</a>
+      <a href="#" onClick={(e) => go(e, "info_village:" + v.id)}>{v.x != null && v.y != null ? villageDisplayName(v) : v.name}</a>
       {v.ownerType === "PLAYER" && (
         <span> — <a href="#" onClick={(e) => go(e, "info_player:p_" + (v.ownerName ?? PLAYER_NAME))}>{v.ownerName ?? PLAYER_NAME}</a></span>
       )}

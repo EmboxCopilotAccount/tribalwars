@@ -288,9 +288,10 @@ export function travelSeconds(from, to, unitIds, worldSpeed = 1) {
   return Math.max(1, Math.round((dist * slowest * 60) / (worldSpeed || 1)));
 }
 
-// icon + text of one of the player's own commands (backend movement types ATTACKING / SUPPORTING / RETURNING / SUPPORT_IN)
-export function commandInfo(m, nameOf) {
-  const name = nameOf(m.otherVillageName);
+// icon + text of one of the player's own commands (backend movement types ATTACKING / SUPPORTING / RETURNING / SUPPORT_IN).
+// The movement carries the other village's coordinates itself: matching by name picks the wrong "Abandoned Camp".
+export function commandInfo(m) {
+  const name = villageDisplayName({ name: m.otherVillageName, x: m.otherX, y: m.otherY });
   if (m.type === "SUPPORTING") return { icon: "support", label: `Support for ${name}` };
   if (m.type === "SUPPORT_IN") return { icon: "support", label: `Support from ${name}` };
   if (m.type === "INCOMING_ATTACK") return { icon: "attack", label: `Attack from ${name}` };

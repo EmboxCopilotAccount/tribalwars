@@ -80,6 +80,8 @@ public record VillageStateDto(
     // total from the market level, available = not away on a trip, capacity = load per merchant.
     public record MerchantsDto(int total, int available, int capacity) {}
 
+    // other* = the village at the other end: the target of an outgoing command, the origin of an incoming one.
     public record MovementDto(Long id, String type, String otherVillageName, Instant arrivesAt, Map<String, Integer> units,
-                              Long originVillageId, Long targetVillageId, Instant departedAt, double wood, double clay, double iron) {}
+                              Long originVillageId, Long targetVillageId, Instant departedAt, double wood, double clay, double iron,
+                              int otherX, int otherY) {}
 }
