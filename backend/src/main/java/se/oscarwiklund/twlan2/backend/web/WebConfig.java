@@ -33,6 +33,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
+                // Spring skips afterCompletion when preHandle returns false (401/403/423 below), so whatever an earlier
+                // request on this pooled thread left behind is cleared here: else a request without a valid token
+                // would run as the account of the last refused one
+                WorldContext.clear();
+                VillageContext.clear();
+                AccountContext.clear();
                 if ("OPTIONS".equals(request.getMethod())) {
                     return true;
                 }
@@ -44,7 +50,6 @@ public class WebConfig implements WebMvcConfigurer {
                         WorldContext.clear();
                     }
                 }
-                VillageContext.clear();
                 String village = request.getHeader("X-Village-Id");
                 if (village != null && !village.isBlank()) {
                     try {
