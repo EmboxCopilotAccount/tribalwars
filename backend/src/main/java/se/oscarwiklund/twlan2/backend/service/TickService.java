@@ -80,6 +80,9 @@ public class TickService {
     // occasionally deadlocked H2 on the `building` table).
     void completeBuildItem(BuildQueueItem item, Instant now) {
         Village village = item.getVillage();
+        // what was produced until the upgrade finished still comes at the old level and warehouse size
+        Instant doneAt = item.getCompletesAt() != null && item.getCompletesAt().isBefore(now) ? item.getCompletesAt() : now;
+        villageService.settleResources(village, doneAt);
         Building building = buildingRepository.findByVillageAndType(village, item.getType())
                 .orElseGet(() -> {
                     Building b = new Building();

@@ -59,7 +59,11 @@ public class VillageService {
 
     // Barbarian villages produce like any other village (their loot regrows).
     public void settleResources(Village village) {
-        Instant now = Instant.now();
+        settleResources(village, Instant.now());
+    }
+
+    // Production up to `now`, at the levels the village has at that moment (e.g. just before an upgrade completes).
+    public void settleResources(Village village, Instant now) {
         if (village.getResourcesSettledAt() == null) {
             village.setResourcesSettledAt(now);
             return;
