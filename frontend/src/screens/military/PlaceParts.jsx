@@ -13,6 +13,7 @@ import {
   fmtBuildTime,
   fmtOnTime,
   navigateTo,
+  cancellableUntil,
   useNowTick,
   villageDisplayName,
   TYPE_TO_ID,
@@ -69,18 +70,13 @@ export function PlaceHeader({ mode, navigate }) {
 }
 
 /* ---------------- troop movements (own / foreign commands) ---------------- */
-// MovementService.CANCEL_SECONDS: an own attack or support can be called off this long after it was sent
-const CANCEL_MS = 600 * 1000;
-
 export function CommandTables({ village, go, onCancel }) {
   const now = useNowTick();
-  const outgoing = new Set((village.outgoingMovements ?? []).map((m) => m.id));
   const own = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
     ...m,
     ...commandInfo(m),
   })).sort((a, b) => new Date(a.arrivesAt) - new Date(b.arrivesAt));
-  const cancellable = (m) =>
-    onCancel && outgoing.has(m.id) && m.departedAt && now - new Date(m.departedAt).getTime() < CANCEL_MS && new Date(m.arrivesAt).getTime() > now;
+  const cancellable = (m) => onCancel && cancellableUntil(m, now);
   if (own.length === 0) return null;
   return (
     <table className="vis" style={{ width: "100%" }}>

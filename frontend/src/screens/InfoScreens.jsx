@@ -4,12 +4,13 @@
      info_village:<villageId>   owner, tribe, points, distance and the actions you can take against it
      info_command:<movementId>  origin, target, departure/arrival, the troops and the loot of one running command */
 import { useState } from "react";
+import { confirmBox } from "../lib/buildings";
 import { PLAYER_NAME } from "../lib/data";
 import { Timer, PreErrorBox } from "../lib/ui";
 import { loadSetting, saveSetting } from "../lib/map";
 import { bonusOf } from "../lib/bonus";
 import { BonusIcon } from "../lib/BonusIcon";
-import { TYPE_TO_ID, UNIT_BY_ID, commandInfo, continentOf, fmtOnTime, villageDisplayName } from "../lib/military";
+import { TYPE_TO_ID, UNIT_BY_ID, cancellableUntil, commandInfo, continentOf, fmtOnTime, useNowTick, villageDisplayName } from "../lib/military";
 
 const distance = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 const fmtDistance = (d) => (Math.round(d * 100) / 100).toString().replace(".", ",") + " fields";
@@ -115,7 +116,8 @@ export function InfoVillageScreen({ id, village, villages = [], go }) {
   );
 }
 
-export function InfoCommandScreen({ id, village, villages = [], go }) {
+export function InfoCommandScreen({ id, village, villages = [], go, onCancel }) {
+  const now = useNowTick();
   const all = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])];
   const m = all.find((x) => String(x.id) === String(id));
   if (!m) return <Missing text="This command no longer exists." />;
@@ -135,6 +137,13 @@ export function InfoCommandScreen({ id, village, villages = [], go }) {
   );
   const units = Object.entries(m.units ?? {}).filter(([, n]) => n > 0);
   const loot = (m.wood ?? 0) + (m.clay ?? 0) + (m.iron ?? 0);
+  const cancelUntil = onCancel && cancellableUntil(m, now);
+  const cancel = (e) => {
+    e.preventDefault();
+    confirmBox("Cancel this command? The troops turn round and come home.", async () => {
+      if (await onCancel(m.id)) go(null, "place"); // the command is gone; its troops show in the rally point
+    });
+  };
 
   return (
     <>
@@ -167,6 +176,15 @@ export function InfoCommandScreen({ id, village, villages = [], go }) {
             <td>Arrival in:</td>
             <td><Timer target={m.arrivesAt} /></td>
           </tr>
+          {cancelUntil && (
+            <tr>
+              <td>Cancel:</td>
+              <td>
+                <a href="#" onClick={cancel} title="The troops turn round and walk home as long as they have walked so far">» Cancel command</a>
+                {" "}<span className="grey">(possible for <Timer target={cancelUntil} />)</span>
+              </td>
+            </tr>
+          )}
           {loot > 0 && (
             <tr>
               <td>Loot:</td>

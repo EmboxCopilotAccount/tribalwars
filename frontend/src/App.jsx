@@ -428,7 +428,7 @@ export default function App() {
   else if (screenName === "settings") content = <SettingsScreen mode={mode} go={go} />;
   else if (screenName === "ally") content = <AllyScreen village={village} mode={mode} go={go} />;
   else if (screenName === "info_village" && mode) content = <InfoVillageScreen id={mode} village={village} villages={villages} go={go} />;
-  else if (screenName === "info_command" && mode) content = <InfoCommandScreen id={mode} village={village} villages={villages} go={go} />;
+  else if (screenName === "info_command" && mode) content = <InfoCommandScreen id={mode} village={village} villages={villages} go={go} onCancel={handleCancelCommand} />;
   else if (screenName === "info_ally") content = <InfoAllyScreen id={mode} go={go} />;
   else if (screenName === "train") content = <TrainScreen village={village} onTrain={handleTrain} onDecommission={handleDecommission} onCancelTrain={handleCancelTrain} busy={busy} go={go} />;
   else if (screenName === "market") content = <MarketScreen village={village} villages={villages} go={go} />;

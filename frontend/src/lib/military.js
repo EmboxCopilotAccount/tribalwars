@@ -441,3 +441,7 @@ export function recruitSeconds(village, id) {
   const bonus = recruitFactor(village.bonus, UNIT_RECRUIT[id].building); // bonus village: faster in its barracks / stable / workshop
   return Math.max(1, Math.round((UNIT_RECRUIT[id].time * (2 / 3) / Math.pow(1.06, level) * bonus) / (village.worldSpeed || 1)));
 }
+
+/* An own attack or support can be called off until its `cancelUntil` (MovementService.cancelUntil: 10 minutes after
+   sending, divided by the world speed, at least 1 minute). */
+export const cancellableUntil = (m, now) => (m.cancelUntil && new Date(m.cancelUntil).getTime() > now ? m.cancelUntil : null);

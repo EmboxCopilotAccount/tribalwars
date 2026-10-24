@@ -90,5 +90,5 @@ public record VillageStateDto(
     // other* = the village at the other end: the target of an outgoing command, the origin of an incoming one.
     public record MovementDto(Long id, String type, String otherVillageName, Instant arrivesAt, Map<String, Integer> units,
                               Long originVillageId, Long targetVillageId, Instant departedAt, double wood, double clay, double iron,
-                              int otherX, int otherY) {}
+                              int otherX, int otherY, Instant cancelUntil) {}
 }

@@ -183,11 +183,24 @@ public class MovementService {
         return movementRepository.save(movement);
     }
 
-    // How long after sending an attack or support can still be called off (the original's 10 minutes).
+    // How long after sending an attack or support can still be called off: the original's 10 minutes at speed 1,
+    // divided by the world speed like every other duration, but never under a minute.
     public static final long CANCEL_SECONDS = 600;
+    public static final long MIN_CANCEL_SECONDS = 60;
+
+    public static long cancelSeconds(double worldSpeed) {
+        return Math.max(MIN_CANCEL_SECONDS, Math.round(CANCEL_SECONDS / Math.max(worldSpeed, 1e-9)));
+    }
+
+    // Until when the sender can still call this command off, or null when it can't be (not an attack/support).
+    public static Instant cancelUntil(Movement m, double worldSpeed) {
+        if ((m.getType() != MovementType.ATTACK && m.getType() != MovementType.SUPPORT) || m.getDepartedAt() == null) return null;
+        Instant until = m.getDepartedAt().plusSeconds(cancelSeconds(worldSpeed));
+        return until.isBefore(m.getArrivesAt()) ? until : m.getArrivesAt();
+    }
 
     // The sender calls a command off: the troops turn round where they are and walk home as long as they have
-    // walked so far. Only within CANCEL_SECONDS of sending.
+    // walked so far. Only within cancelSeconds of sending.
     @Transactional
     public Movement cancel(Account actor, Long movementId) {
         Movement m = movementRepository.findById(movementId).orElseThrow(() -> new MovementException("This command no longer exists"));
@@ -196,7 +209,11 @@ public class MovementService {
         if (actor == null || origin.getOwner() == null || !origin.getOwner().getId().equals(actor.getId())) throw new MovementException("This is not your command");
         Instant now = Instant.now();
         long walked = m.getDepartedAt() == null ? Long.MAX_VALUE : java.time.Duration.between(m.getDepartedAt(), now).toSeconds();
-        if (walked > CANCEL_SECONDS || !m.getArrivesAt().isAfter(now)) throw new MovementException("A command can only be cancelled in the first 10 minutes");
+        long window = cancelSeconds(settings.speedOf(origin));
+        if (walked > window || !m.getArrivesAt().isAfter(now)) {
+            throw new MovementException("A command can only be cancelled in the first "
+                    + (window % 60 == 0 ? window / 60 + (window == 60 ? " minute" : " minutes") : window + " seconds"));
+        }
 
         Movement back = new Movement();
         back.setOriginVillage(m.getTargetVillage());

@@ -15,7 +15,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// An attack can be called off in its first 10 minutes: the troops walk home as long as they have walked.
+// An attack can be called off in its first 10 minutes (divided by the world speed, at least 1): the troops walk home
+// as long as they have walked.
 @SpringBootTest
 @Transactional
 class CommandCancelTest {
@@ -73,6 +74,22 @@ class CommandCancelTest {
         Movement attack = attackSentSecondsAgo(MovementService.CANCEL_SECONDS + 5);
         assertThrows(MovementService.MovementException.class, () -> movementService.cancel(me, attack.getId()));
         assertTrue(movements.findById(attack.getId()).isPresent());
+    }
+
+    @Test
+    void fasterWorldsHaveAShorterWindowButAtLeastAMinute() {
+        assertEquals(600, MovementService.cancelSeconds(1));
+        assertEquals(300, MovementService.cancelSeconds(2));
+        assertEquals(60, MovementService.cancelSeconds(50));
+
+        World fast = worlds.createWorld("cancel-fast", 50);
+        home = worlds.joinWorld(fast, me = account("fastsender"));
+        target = worlds.joinWorld(fast, account("fasttarget"));
+        Movement late = attackSentSecondsAgo(70);
+        assertThrows(MovementService.MovementException.class, () -> movementService.cancel(me, late.getId()));
+        Movement early = attackSentSecondsAgo(30);
+        assertEquals(early.getDepartedAt().plusSeconds(60), MovementService.cancelUntil(early, 50)); // what the page counts down to
+        assertEquals(MovementType.RETURN, movementService.cancel(me, early.getId()).getType());
     }
 
     @Test
