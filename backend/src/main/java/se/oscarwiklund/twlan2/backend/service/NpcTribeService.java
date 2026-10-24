@@ -123,8 +123,13 @@ public class NpcTribeService {
                 } else if (!joinsTribes(npc)) {
                     if (rnd.nextDouble() < 0.3) tribes.reject(npc, world, i.getId()); // never joins, but clears out stale invitations eventually
                 } else if (rnd.nextDouble() < 0.25 + 0.5 * sociability(npc)) {
-                    tribes.accept(npc, world, i.getId());
-                    tribeOf.put(npc.getId(), tribeRepository.findById(i.getTribeId()).orElse(null));
+                    try {
+                        tribes.accept(npc, world, i.getId());
+                        tribeOf.put(npc.getId(), tribeRepository.findById(i.getTribeId()).orElse(null));
+                    } catch (TribeService.TribeException refused) {
+                        // the tribe filled up (or is gone) since it invited: turn it down, so it can't stall the others
+                        tribes.reject(npc, world, i.getId());
+                    }
                 } else if (rnd.nextDouble() < 0.2) {
                     tribes.reject(npc, world, i.getId());
                 }
