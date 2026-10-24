@@ -1,4 +1,4 @@
-/* Farm assistant helpers: premade armies ("templates" A, B, C), the target filters and which villages are worth a raid.
+/* Farm assistant helpers: premade armies ("templates" A, B, C, ... up to Z), the target filters and which villages are worth a raid.
    The original TWLan has no such page. The setup is one object per world, {templates, settings, hidden}: it is read from
    the browser's localStorage (so the map's click menu can use it synchronously) and mirrored to the server
    (/api/farm), which is how it follows you to another browser. Sending itself goes through the normal attack command. */
@@ -6,7 +6,14 @@ import { api } from "../api";
 import { ID_TO_TYPE, UNIT_LIST } from "./military";
 import { hideCapacity } from "./buildings";
 
-export const TEMPLATE_KEYS = ["A", "B", "C"];
+export const TEMPLATE_KEYS = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)); // A to Z
+const SHOWN_TEMPLATES = 3; // the editor starts with A, B and C
+
+/** The templates the editor shows: at least A to C, and one empty row after the last one with troops (up to Z). */
+export function visibleTemplateKeys(templates) {
+  const last = TEMPLATE_KEYS.findLastIndex((n) => Object.keys(templates?.[n] ?? {}).length > 0);
+  return TEMPLATE_KEYS.slice(0, Math.max(SHOWN_TEMPLATES, last + 2));
+}
 export const DEFAULT_SETTINGS = { maxDistance: 25, minPoints: 0, maxPoints: 0, npc: false }; // 0 = no limit
 
 const configKey = (worldId) => `twlan.farm.config.${worldId ?? "x"}`;

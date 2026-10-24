@@ -6,7 +6,7 @@ import { createServer } from 'vite'
 
 const server = await createServer({ server: { middlewareMode: true, hmr: false, watch: null }, appType: 'custom', logLevel: 'silent' })
 const { contextButtons } = await server.ssrLoadModule('/src/lib/map.js')
-const { normalizeConfig, DEFAULT_SETTINGS } = await server.ssrLoadModule('/src/lib/farm.js')
+const { normalizeConfig, DEFAULT_SETTINGS, TEMPLATE_KEYS, visibleTemplateKeys } = await server.ssrLoadModule('/src/lib/farm.js')
 const { farmTargets, templateProblem, lastReports, cleanUnits, toBackendUnits, ago, reportDot, scoutsOnly, reportLoot, plunderable } = await server.ssrLoadModule('/src/lib/farm.js')
 const me = { id: 1, x: 500, y: 500, myVillages: [{ id: 1 }, { id: 2 }] }
 const vs = [
@@ -114,10 +114,18 @@ assert.deepEqual(ids(human, npcOn).filter(i => i.startsWith('mp_farm')), [])    
 assert.deepEqual(ids(mine, npcOn).filter(i => i.startsWith('mp_farm')), [])
 
 // what the server (or an older browser copy) hands back is cleaned into a complete setup
-assert.deepEqual(normalizeConfig(null), { templates: { A: {}, B: {}, C: {} }, settings: DEFAULT_SETTINGS, hidden: [] })
+const noTemplates = Object.fromEntries(TEMPLATE_KEYS.map((n) => [n, {}]))
+assert.deepEqual(TEMPLATE_KEYS.length, 26)
+assert.deepEqual(normalizeConfig(null), { templates: noTemplates, settings: DEFAULT_SETTINGS, hidden: [] })
 assert.deepEqual(
-  normalizeConfig({ templates: { A: { spear: '5', bogus: 3 }, D: { axe: 1 } }, settings: { npc: true }, hidden: [3, 'x', 4.5, 8] }),
-  { templates: { A: { spear: 5 }, B: {}, C: {} }, settings: { ...DEFAULT_SETTINGS, npc: true }, hidden: [3, 8] })
+  normalizeConfig({ templates: { A: { spear: '5', bogus: 3 }, D: { axe: 1 }, AA: { axe: 1 } }, settings: { npc: true }, hidden: [3, 'x', 4.5, 8] }),
+  { templates: { ...noTemplates, A: { spear: 5 }, D: { axe: 1 } }, settings: { ...DEFAULT_SETTINGS, npc: true }, hidden: [3, 8] })
+// the editor: A to C at first, then one empty row after the last template with troops, never past Z
+assert.deepEqual(visibleTemplateKeys({}), ['A', 'B', 'C'])
+assert.deepEqual(visibleTemplateKeys({ A: { spear: 1 } }), ['A', 'B', 'C'])
+assert.deepEqual(visibleTemplateKeys({ C: { spear: 1 } }), ['A', 'B', 'C', 'D'])
+assert.deepEqual(visibleTemplateKeys({ A: { spear: 1 }, E: { axe: 1 }, F: {} }), ['A', 'B', 'C', 'D', 'E', 'F'])
+assert.deepEqual(visibleTemplateKeys({ Z: { spear: 1 } }), TEMPLATE_KEYS)
 // resources to plunder: the latest scouting minus the hiding place (known from level 2), minus a raid the scouts came with
 {
   const t = (h) => new Date(Date.UTC(2026, 9, 24, h)).toISOString()

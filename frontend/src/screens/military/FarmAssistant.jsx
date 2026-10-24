@@ -1,4 +1,4 @@
-// Rally point -> Farm Assistant (place:farm). Premade armies ("templates" A, B, C) that go to a village with one click.
+// Rally point -> Farm Assistant (place:farm). Premade armies ("templates" A, B, C, ...; a new empty one appears once the last has troops) that go to a village with one click.
 // The original TWLan has no such page, so it is built from game.css classes (vis tables, btn, dots and unit icons) and
 // sends through the same attack command as the rally point. Templates, filters and hidden targets are kept per world
 // in the browser (lib/farm.js).
@@ -8,7 +8,7 @@ import { fmtDuration } from "../../lib/data";
 import { Timer } from "../../lib/ui";
 import { pushRecent } from "../../lib/targets";
 import {
-  TEMPLATE_KEYS, ago, cleanUnits, farmTargets, lastReports, loadHidden, loadSettings, loadTemplates,
+  TEMPLATE_KEYS, visibleTemplateKeys, ago, cleanUnits, farmTargets, lastReports, loadHidden, loadSettings, loadTemplates,
   onFarmSynced, plunderable, reportDot, saveHidden, saveSettings, saveTemplates, templateProblem, toBackendUnits,
 } from "../../lib/farm";
 
@@ -43,7 +43,7 @@ function TemplateEditor({ templates, home, onSave }) {
               </th>
             ))}
           </tr>
-          {TEMPLATE_KEYS.map((name) => (
+          {visibleTemplateKeys(templates).map((name) => (
             <tr key={name}>
               <td><b>{name}</b></td>
               {UNIT_LIST.map((u) => (
@@ -140,11 +140,13 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
   };
 
   const shown = targets.slice(0, MAX_ROWS);
+  // only the templates that have troops get a button in the list
+  const inUse = TEMPLATE_KEYS.filter((name) => Object.keys(templates[name]).length > 0);
   return (
     <>
       <h3>Farm Assistant</h3>
       <p>
-        Set up to three premade armies and send one to a village with a single click. Barbarian villages are listed
+        Set up premade armies (a new one appears once the last has troops) and send one to a village with a single click. Barbarian villages are listed
         nearest first, with what your last attack there found. Put nobles in a template to conquer with it.
       </p>
       <TemplateEditor key={revision} templates={templates} home={home} onSave={saveAll} />
@@ -241,7 +243,8 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                 <td>{t.points}</td>
                 <td>{t.distance.toFixed(1)}</td>
                 <td className="nowrap">
-                  {TEMPLATE_KEYS.map((name) => {
+                  {inUse.length === 0 && <span className="grey">Set up a template above</span>}
+                  {inUse.map((name) => {
                     const problem = templateProblem(templates[name], home);
                     const secs = problem ? null : travelSeconds(village, t, Object.keys(templates[name]), village.travelSpeed);
                     return (
