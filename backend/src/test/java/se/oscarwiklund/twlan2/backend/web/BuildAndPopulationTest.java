@@ -118,6 +118,13 @@ class BuildAndPopulationTest {
     }
 
     @Test
+    void travelTimesOnScreenUseTheUnitSpeed() {
+        village.getWorld().getSettings().put("unitsSpeed", "2");
+        VillageStateDto state = facade.toDto(village);
+        assertEquals(state.worldSpeed() * 2, state.travelSpeed(), 1e-9); // what MovementService sends troops at
+    }
+
+    @Test
     void queuedOrdersCarryTheFarmSpaceTheyReserve() {
         fillResources();
         setLevel(BuildingType.HEADQUARTERS, 3);

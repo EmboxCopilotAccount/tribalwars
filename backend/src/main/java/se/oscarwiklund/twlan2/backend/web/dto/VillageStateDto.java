@@ -26,6 +26,7 @@ public record VillageStateDto(
         List<MovementDto> outgoingMovements,
         List<MovementDto> incomingMovements,
         double worldSpeed,
+        double travelSpeed, // world speed times the world's unit speed: what troops travel at
         double basicDefense, // free defence every village has on top of its troops (world setting)
         boolean attackSelf, // whether this world lets a player attack their own villages
         double prodToSeconds,

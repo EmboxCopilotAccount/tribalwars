@@ -231,7 +231,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                 <td className="nowrap">
                   {TEMPLATE_KEYS.map((name) => {
                     const problem = templateProblem(templates[name], home);
-                    const secs = problem ? null : travelSeconds(village, t, Object.keys(templates[name]), village.worldSpeed);
+                    const secs = problem ? null : travelSeconds(village, t, Object.keys(templates[name]), village.travelSpeed);
                     return (
                       <input key={name} type="button" className="btn" value={name}
                         style={{ marginRight: 3, opacity: problem ? 0.4 : 1 }}

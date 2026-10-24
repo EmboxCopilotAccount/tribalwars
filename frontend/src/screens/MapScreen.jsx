@@ -395,7 +395,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
     const template = farm?.templates[name];
     if (!template || !ctx) return CTX_TITLES[id];
     const units = Object.entries(template).map(([u, n]) => `${n}x ${UNIT_BY_ID[u].name}`).join(", ");
-    return `Template ${name}: ${units} - arrives in ${fmtDuration(travelSeconds(village, ctx.village, Object.keys(template), village.worldSpeed) * 1000)}`;
+    return `Template ${name}: ${units} - arrives in ${fmtDuration(travelSeconds(village, ctx.village, Object.keys(template), village.travelSpeed) * 1000)}`;
   };
   const ctxClick = (id, v) => (e) => {
     e.preventDefault();

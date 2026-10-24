@@ -83,7 +83,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     setConfirm({ target, units, isAttack: button !== "support" });
   };
 
-  const durationSeconds = (c) => travelSeconds(village, c.target, Object.keys(c.units), village.worldSpeed);
+  const durationSeconds = (c) => travelSeconds(village, c.target, Object.keys(c.units), village.travelSpeed);
 
   const send = async () => {
     const units = {};
