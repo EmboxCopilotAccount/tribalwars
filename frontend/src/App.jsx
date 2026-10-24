@@ -321,6 +321,10 @@ export default function App() {
     await api.withdrawSupport(armyId, units);
     showInfo("The troops are on their way home.");
   });
+  const handleCancelCommand = wrap(async (movementId) => {
+    await api.cancelCommand(movementId);
+    showInfo("The command was cancelled. The troops are on their way home.");
+  });
   const handleSendBack = wrap(async (armyId) => {
     await api.sendBackSupport(armyId);
     showInfo("The troops are on their way home.");
@@ -429,7 +433,7 @@ export default function App() {
   else if (screenName === "train") content = <TrainScreen village={village} onTrain={handleTrain} onDecommission={handleDecommission} onCancelTrain={handleCancelTrain} busy={busy} go={go} />;
   else if (screenName === "market") content = <MarketScreen village={village} villages={villages} go={go} />;
   else if (screenName === "place")
-    content = <PlaceScreen village={village} villages={villages} reports={reports} onAttack={handleAttack} onSupport={handleSupport} onWithdraw={handleWithdraw} onSendBack={handleSendBack} busy={busy} go={go} />;
+    content = <PlaceScreen village={village} villages={villages} reports={reports} onAttack={handleAttack} onSupport={handleSupport} onWithdraw={handleWithdraw} onSendBack={handleSendBack} onCancelCommand={handleCancelCommand} busy={busy} go={go} />;
   else if (screenName === "building")
     content = <BuildingScreen village={village} type={mode} onBuild={handleBuild} onCancelBuild={handleCancelBuild} onFinishBuild={handleFinishBuild} onRename={handleRename} onTrain={handleTrain} onCancelTrain={handleCancelTrain} onRenamePaladin={handleRenamePaladin} onMintCoin={handleMintCoin} onResearch={handleResearch} onCancelResearch={handleCancelResearch} busy={busy} go={go} />;
   else if (TRAIN_BUILDING_IDS.includes(screenName))

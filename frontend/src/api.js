@@ -130,6 +130,7 @@ export const api = {
     request("/village/support", { method: "POST", body: JSON.stringify({ targetVillageId, units }) }),
   withdrawSupport: (armyId, units) =>
     request("/village/support/withdraw", { method: "POST", body: JSON.stringify({ armyId, units }) }),
+  cancelCommand: (movementId) => request("/village/command/cancel", { method: "POST", body: JSON.stringify({ movementId }) }),
   sendBackSupport: (armyId) => request("/village/support/sendback", { method: "POST", body: JSON.stringify({ armyId }) }),
   // catapultTarget: backend BuildingType the catapults aim at (undefined = random)
   attack: (targetVillageId, units, catapultTarget) =>

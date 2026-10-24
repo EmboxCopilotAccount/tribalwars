@@ -11,7 +11,7 @@ import { useUnitPopup } from "./military/UnitPopup";
 
 const MODE_IDS = ["command", "secrets", "units", "sim", "templates", "farm"];
 
-export function PlaceScreen({ village, villages = [], reports = [], onAttack, onSupport, onWithdraw, onSendBack, busy, go }) {
+export function PlaceScreen({ village, villages = [], reports = [], onAttack, onSupport, onWithdraw, onSendBack, onCancelCommand, busy, go }) {
   const [parts, navigate] = useHashNav("place", go);
   const now = useNowTick();
   const popup = useUnitPopup();
@@ -135,6 +135,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
         setCounts={setCounts}
         popup={popup}
         onSubmit={submitCommand}
+        onCancelCommand={onCancelCommand}
         target={
           <TargetField
             village={village}

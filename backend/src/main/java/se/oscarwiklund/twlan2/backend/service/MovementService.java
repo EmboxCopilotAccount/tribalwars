@@ -182,4 +182,32 @@ public class MovementService {
         live.village(target); // (the incoming attack of a real player shows up at once)
         return movementRepository.save(movement);
     }
+
+    // How long after sending an attack or support can still be called off (the original's 10 minutes).
+    public static final long CANCEL_SECONDS = 600;
+
+    // The sender calls a command off: the troops turn round where they are and walk home as long as they have
+    // walked so far. Only within CANCEL_SECONDS of sending.
+    @Transactional
+    public Movement cancel(Account actor, Long movementId) {
+        Movement m = movementRepository.findById(movementId).orElseThrow(() -> new MovementException("This command no longer exists"));
+        Village origin = m.getOriginVillage();
+        if (m.getType() != MovementType.ATTACK && m.getType() != MovementType.SUPPORT) throw new MovementException("Only attacks and support can be cancelled");
+        if (actor == null || origin.getOwner() == null || !origin.getOwner().getId().equals(actor.getId())) throw new MovementException("This is not your command");
+        Instant now = Instant.now();
+        long walked = m.getDepartedAt() == null ? Long.MAX_VALUE : java.time.Duration.between(m.getDepartedAt(), now).toSeconds();
+        if (walked > CANCEL_SECONDS || !m.getArrivesAt().isAfter(now)) throw new MovementException("A command can only be cancelled in the first 10 minutes");
+
+        Movement back = new Movement();
+        back.setOriginVillage(m.getTargetVillage());
+        back.setTargetVillage(origin);
+        back.setType(MovementType.RETURN);
+        back.getUnits().putAll(m.getUnits());
+        back.setDepartedAt(now);
+        back.setArrivesAt(now.plusSeconds(Math.max(1, walked)));
+        movementRepository.delete(m);
+        live.village(origin);
+        live.village(m.getTargetVillage()); // the incoming attack disappears there
+        return movementRepository.save(back);
+    }
 }

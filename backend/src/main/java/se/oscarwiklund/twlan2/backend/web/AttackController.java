@@ -65,6 +65,15 @@ public class AttackController {
         return gameFacade.toDto(gameFacade.playerHomeVillage());
     }
 
+    public record CancelRequest(Long movementId) {}
+
+    // Calls an own attack or support off within its first minutes: the troops turn round.
+    @PostMapping("/api/village/command/cancel")
+    public VillageStateDto cancel(@RequestBody CancelRequest request) {
+        movementService.cancel(se.oscarwiklund.twlan2.backend.web.AccountContext.get(), request.movementId());
+        return gameFacade.toDto(gameFacade.playerHomeVillage());
+    }
+
     private VillageStateDto send(AttackRequest request, boolean support) {
         Village origin = gameFacade.playerHomeVillage();
         Village target = villageRepository.findById(request.targetVillageId())

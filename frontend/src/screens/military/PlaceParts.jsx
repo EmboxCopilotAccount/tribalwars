@@ -13,11 +13,12 @@ import {
   fmtBuildTime,
   fmtOnTime,
   navigateTo,
+  useNowTick,
   villageDisplayName,
   TYPE_TO_ID,
   ID_TO_TYPE,
 } from "../../lib/military";
-import { B } from "../../lib/buildings";
+import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
 import { favoriteIds, lastAttacked, recentTargets } from "../../lib/targets";
 import { simulate } from "./sim";
@@ -68,11 +69,18 @@ export function PlaceHeader({ mode, navigate }) {
 }
 
 /* ---------------- troop movements (own / foreign commands) ---------------- */
-export function CommandTables({ village, go }) {
+// MovementService.CANCEL_SECONDS: an own attack or support can be called off this long after it was sent
+const CANCEL_MS = 600 * 1000;
+
+export function CommandTables({ village, go, onCancel }) {
+  const now = useNowTick();
+  const outgoing = new Set((village.outgoingMovements ?? []).map((m) => m.id));
   const own = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
     ...m,
     ...commandInfo(m),
   })).sort((a, b) => new Date(a.arrivesAt) - new Date(b.arrivesAt));
+  const cancellable = (m) =>
+    onCancel && outgoing.has(m.id) && m.departedAt && now - new Date(m.departedAt).getTime() < CANCEL_MS && new Date(m.arrivesAt).getTime() > now;
   if (own.length === 0) return null;
   return (
     <table className="vis" style={{ width: "100%" }}>
@@ -96,6 +104,19 @@ export function CommandTables({ village, go }) {
                   <a className="rename-icon" href="#" title="rename" onClick={(e) => e.preventDefault()} />
                 </span>
               </span>
+              {cancellable(m) && (
+                <a
+                  className="float_right"
+                  href="#"
+                  title="The troops turn round and walk home as long as they have walked so far"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    confirmBox("Cancel this command? The troops turn round and come home.", () => onCancel(m.id));
+                  }}
+                >
+                  cancel
+                </a>
+              )}
             </td>
             <td>{fmtOnTime(m.arrivesAt)}</td>
             <td>
@@ -347,7 +368,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
 }
 
 /* ---------------- command form (command.php) ---------------- */
-export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, go }) {
+export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, onCancelCommand, go }) {
   const [selectAll, setSelectAll] = useState(false);
   const clicked = useRef("attack");
 
@@ -499,7 +520,7 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
       </div>
       {/* TODO */}
       <h3 style={{ clear: "both" }}>Troop Movements</h3>
-      <CommandTables village={village} go={go} />
+      <CommandTables village={village} go={go} onCancel={onCancelCommand} />
     </>
   );
 }
