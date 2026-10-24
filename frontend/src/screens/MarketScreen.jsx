@@ -143,6 +143,16 @@ function SendMode({ village, villages, market, go, presetId }) {
     setAmounts({ ...amounts, [r]: String(Math.min(have[r], room)) });
   };
 
+  // the player's other villages in this world, by name, as a quicker way to pick the destination
+  const ownTargets = (village.myVillages ?? []).filter((v) => v.id !== village.id).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  const pickOwn = (id) => {
+    const v = ownTargets.find((x) => x.id === id);
+    if (!v) return;
+    setType("coord");
+    setText(`${v.x}|${v.y}`);
+    setTarget(villages.find((x) => x.id === id) ?? { id: v.id, name: v.name, x: v.x, y: v.y, ownerType: "PLAYER" });
+  };
+
   const check = (e) => {
     e.preventDefault();
     market.setError(null);
@@ -230,6 +240,19 @@ function SendMode({ village, villages, market, go, presetId }) {
         <div style={{ overflow: "hidden" }}>
           <TargetField village={village} villages={villages.filter((v) => v.ownerType !== "BARBARIAN")} type={type} setType={setType} text={text} setText={setText} confirmed={target} setConfirmed={setTarget} />
         </div>
+        {ownTargets.length > 0 && (
+          <p>
+            <label>
+              Or one of your villages:{" "}
+              <select value={target && ownTargets.some((v) => v.id === target.id) ? target.id : ""} onChange={(e) => pickOwn(Number(e.target.value))}>
+                <option value="">select village</option>
+                {ownTargets.map((v) => (
+                  <option key={v.id} value={v.id}>{`${v.name} (${v.x}|${v.y})`}</option>
+                ))}
+              </select>
+            </label>
+          </p>
+        )}
         <p>
           <input type="submit" className="btn" value="OK" />
         </p>
