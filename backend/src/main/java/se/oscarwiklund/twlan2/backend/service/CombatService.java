@@ -346,6 +346,14 @@ public class CombatService {
         return new Result(report, survivors, lootWood, lootClay, lootIron);
     }
 
+    // new EnumMap<>(map) refuses an empty map that isn't an EnumMap - and once the attacker's report is saved, its
+    // maps are Hibernate's own; an empty one (no losses on a side) made every tick fail on that attack
+    private static Map<UnitType, Integer> copyOf(Map<UnitType, Integer> units) {
+        Map<UnitType, Integer> copy = new EnumMap<>(UnitType.class);
+        copy.putAll(units);
+        return copy;
+    }
+
     // For the host of the village, or a tribe-mate who had troops there.
     private CombatReport defenderCopy(CombatReport report, Account account) {
         CombatReport mine = new CombatReport();
@@ -357,8 +365,8 @@ public class CombatService {
         mine.setAttackerPlayer(report.getAttackerPlayer());
         mine.setDefenderPlayer(report.getDefenderPlayer());
         mine.setOutcome(report.getOutcome());
-        mine.setAttackerLosses(new EnumMap<>(report.getAttackerLosses()));
-        mine.setDefenderLosses(new EnumMap<>(report.getDefenderLosses()));
+        mine.setAttackerLosses(copyOf(report.getAttackerLosses()));
+        mine.setDefenderLosses(copyOf(report.getDefenderLosses()));
         mine.setLootWood(report.getLootWood());
         mine.setLootClay(report.getLootClay());
         mine.setLootIron(report.getLootIron());
