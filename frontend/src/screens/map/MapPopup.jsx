@@ -1,4 +1,4 @@
-import { continentByXY } from "../../lib/map";
+import { continentOf } from "../../lib/military";
 import { bonusOf } from "../../lib/bonus";
 
 /* Content of #map_popup: the "tpl_popup" template of the original (no extra info; the tribe row is the template's info_ally_row;
@@ -17,7 +17,7 @@ export function MapPopupContent({ village }) {
         )}
         <tr>
           <th colSpan={2}>
-            {village.name} ({village.x}|{village.y}) K{continentByXY(village.x, village.y)}
+            {village.name} ({village.x}|{village.y}) {continentOf(village)}
           </th>
         </tr>
         {bonus && (

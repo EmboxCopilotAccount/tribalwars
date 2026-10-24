@@ -3,6 +3,7 @@ import { OV, levelOf, villagePoints } from "../lib/data";
 import { PreErrorBox } from "../lib/ui";
 import { BonusIcon } from "../lib/BonusIcon";
 import { ShipmentsTable, useMarket } from "./MarketScreen";
+import { continentOf } from "../lib/military";
 
 /* Mirrors templates overviewvillages/{header,combined,groups,footer}.php of the original.
    Real behaviour (checked against the running original):
@@ -136,7 +137,7 @@ export function CombinedTable({ village, go, name, onRename, onSelectVillage, ro
         </tr>
         {rows.map((v, i) => {
           const isCurrent = v.id === village.id;
-          const continent = "K" + Math.floor(v.y / 100) + Math.floor(v.x / 100);
+          const continent = continentOf(v);
           // the other villages are opened first (village switch), then the screen
           const open = (screen) => (e) => {
             e.preventDefault();
