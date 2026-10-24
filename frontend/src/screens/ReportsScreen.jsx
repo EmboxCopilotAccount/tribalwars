@@ -33,6 +33,7 @@ export const REPORT_MODES = [
 /* Reports can't be deleted server-side (no backend endpoint); the delete/read state is kept per browser. */
 const LS_DELETED = "twlan2.reports.deleted";
 const LS_READ = "twlan2.reports.read";
+const LS_HIDDEN_DOTS = "twlan2.reports.hiddenDots"; // dot colours unticked in the list's "Show:" filter
 const loadSet = (key) => {
   try {
     return new Set(JSON.parse(window.localStorage.getItem(key) || "[]"));
@@ -92,7 +93,43 @@ const toIdMap = (byType) => {
 };
 
 /* ---------------- list (overview.php) ---------------- */
-function ReportList({ reports, villages, go, readIds, onDelete }) {
+const DOTS = [
+  ["green", "no losses"],
+  ["yellow", "won with losses"],
+  ["red", "lost"],
+];
+
+// "Show:" row above the list: one checkbox per report dot colour
+function DotFilter({ hidden, onToggle }) {
+  return (
+    <table className="vis" style={{ marginBottom: 4 }}>
+      <tbody>
+        <tr>
+          <td>Show:</td>
+          {DOTS.map(([color, label]) => (
+            <td key={color} className="nowrap">
+              <label>
+                <input type="checkbox" checked={!hidden.has(color)} onChange={() => onToggle(color)} />
+                <img src={`/graphic/dots/${color}.png`} alt="" /> {label}
+              </label>
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function ReportList({ reports: all, villages, go, readIds, onDelete }) {
+  const [hidden, setHidden] = useState(() => loadSet(LS_HIDDEN_DOTS));
+  const toggleDot = (color) => {
+    const next = new Set(hidden);
+    if (next.has(color)) next.delete(color);
+    else next.add(color);
+    setHidden(next);
+    saveSet(LS_HIDDEN_DOTS, next);
+  };
+  const reports = all.filter((r) => !hidden.has(dotColor(r)));
   const [sel, setSel] = useState({});
   const [pageSize, setPageSize] = useState("12");
   const allSelected = reports.length > 0 && reports.every((r) => sel[r.id]);
@@ -116,6 +153,7 @@ function ReportList({ reports, villages, go, readIds, onDelete }) {
         </tbody>
       </table>
 
+      <DotFilter hidden={hidden} onToggle={toggleDot} />
       <form
         method="post"
         onSubmit={(e) => {
@@ -165,6 +203,11 @@ function ReportList({ reports, villages, go, readIds, onDelete }) {
                 </tr>
               );
             })}
+            {reports.length === 0 && all.length > 0 && (
+              <tr>
+                <td colSpan="3">No reports match the filter. Tick a colour above to show its reports.</td>
+              </tr>
+            )}
             <tr>
               <th colSpan="2">
                 <input
