@@ -91,6 +91,7 @@ public class VillageService {
         }
         List<TrainQueueItem> queued = trainQueueItemRepository.findByVillageOrderByPositionAsc(village);
         for (TrainQueueItem item : queued) {
+            if (item.isDecommission()) continue; // units being dismissed are still in the stock until they leave
             used += item.getType().popCost * (item.getTotalCount() - item.getProducedCount());
         }
         return used;
