@@ -111,11 +111,14 @@ public class AchievementService {
     @Transactional
     public void onBattle(Account attacker, Account defenderOwner, World world, boolean attackerWon, long defenderUnitsBefore,
                          long defenderLosses, long loot, long noblesKilled) {
-        if (!earns(attacker, world) || world == null) return;
-        if (defenderOwner != null && !defenderOwner.getId().equals(attacker.getId())) {
+        if (attacker == null || world == null) return;
+        boolean self = defenderOwner != null && defenderOwner.getId().equals(attacker.getId());
+        // opponents defeated (ranking, profile) count for everyone, NPCs too; only the achievements are gated
+        if (defenderLosses > 0 && !self) bump(attacker, world, "kills", defenderLosses);
+        if (!earns(attacker, world)) return;
+        if (defenderOwner != null && !self) {
             markOnce(attacker, world, "target:" + defenderOwner.getId());
         }
-        if (defenderLosses > 0) bump(attacker, world, "kills", defenderLosses);
         if (noblesKilled > 0) bump(attacker, world, "nobles_killed", noblesKilled);
         if (attackerWon && defenderUnitsBefore > 0) bump(attacker, world, "armies", 1);
         if (loot > 0) {
@@ -163,11 +166,15 @@ public class AchievementService {
 
     // Units the attacker lost that were destroyed while defending this village ("defender_of_day"/"protector").
     @Transactional
-    public void onDefend(Account defender, World world, long attackerLosses) {
-        if (!earns(defender, world) || world == null || attackerLosses <= 0) return;
+    public void onDefend(Account defender, Account attacker, World world, long attackerLosses) {
+        if (defender == null || world == null || attackerLosses <= 0) return;
+        if (attacker != null && attacker.getId().equals(defender.getId())) return; // fighting yourself defeats no opponent
+        bump(defender, world, "kills", attackerLosses); // the attackers it killed count as opponents defeated
+        if (!earns(defender, world)) return;
         DailyStat day = today(world, defender);
         day.setDefended(day.getDefended() + attackerLosses);
         dailyStats.save(day);
+        evaluate(defender, world);
     }
 
     // Same, credited to a tribe-mate whose stationed troops helped fight off the attack ("supporter_of_day"/"stalwart").

@@ -152,7 +152,7 @@ public class CombatService {
         // the garrison and every guest army lose their share of the defence's losses
         Map<Long, Long> supporterLosses = support.applyDefenderLosses(defenderVillage, defenderLosses);
         long attackerLossesSum = attackerLosses.values().stream().mapToLong(Integer::longValue).sum();
-        if (previousOwner != null) achievements.onDefend(previousOwner, world, attackerLossesSum);
+        if (previousOwner != null) achievements.onDefend(previousOwner, attackerOwner, world, attackerLossesSum);
         for (Account supporter : supporters.values()) {
             achievements.onSupport(supporter, world, attackerLossesSum);
             achievements.count(supporter, world, "support_battles", 1);
