@@ -152,24 +152,42 @@ export function reportDot(r) {
   return lost > 0 ? "yellow" : "green";
 }
 
+/** An attack of scouts only is a spying mission, not a battle (like CombatService). Old reports without the
+ * attacking units: the spy section is the only hint. */
+export function scoutsOnly(r) {
+  const types = Object.keys(r.attackerUnits ?? {});
+  return types.length > 0 ? types.every((t) => t === "SCOUT") : !!r.spy;
+}
+
+/** The haul as the report shows it (every resource rounded down); full when the troops carried all they could. */
+export function reportLoot(r) {
+  const raw = (r.lootWood ?? 0) + (r.lootClay ?? 0) + (r.lootIron ?? 0);
+  const wood = Math.floor(r.lootWood ?? 0), clay = Math.floor(r.lootClay ?? 0), iron = Math.floor(r.lootIron ?? 0);
+  return { wood, clay, iron, total: wood + clay + iron, full: r.lootCapacity > 0 && raw >= r.lootCapacity - 0.5 };
+}
+
 /**
- * What the player's own reports say about each village: the latest battle ({report, loot, full, wall}) and the
- * latest scouting. Reports from before village ids were recorded cannot be matched and are skipped.
+ * What the player's own reports say about each village: the latest battle ({report, loot, full}), the latest
+ * scouting and the wall level, but only as far as a report shows it (scouts of level 2+, or the rams' damage).
+ * A scouting whose scouts all died says nothing. Reports from before village ids were recorded cannot be matched.
  */
 export function lastReports(reports) {
   const out = new Map();
-  for (const r of [...reports].sort((a, b) => new Date(a.occurredAt) - new Date(b.occurredAt))) {
+  const order = (a, b) => new Date(a.occurredAt) - new Date(b.occurredAt) || (a.id ?? 0) - (b.id ?? 0);
+  for (const r of [...reports].sort(order)) {
     if (r.defenderView || r.defenderVillageId == null) continue;
     const entry = out.get(r.defenderVillageId) ?? {};
     if (r.spy) {
       entry.spy = r;
-      if (r.spy.level >= 2 && r.spy.buildings?.WALL != null) entry.wall = r.spy.buildings.WALL;
-    } else {
-      const loot = Math.round(r.lootWood + r.lootClay + r.lootIron);
-      entry.battle = { report: r, loot, full: r.lootCapacity != null && r.lootCapacity > 0 && loot >= r.lootCapacity };
-      if (r.wallAfter != null) entry.wall = r.wallAfter;
+      if (r.spy.level >= 2) entry.wall = r.spy.buildings?.WALL ?? 0; // no wall is not listed among the buildings
     }
-    out.set(r.defenderVillageId, entry);
+    if (!scoutsOnly(r)) {
+      const { total, full } = reportLoot(r);
+      entry.battle = { report: r, loot: total, full };
+    }
+    // the scouts saw the wall before the battle; the rams' damage is what is left after it
+    if (r.wallBefore != null && r.wallAfter != null && r.wallAfter < r.wallBefore) entry.wall = r.wallAfter;
+    if (entry.spy || entry.battle) out.set(r.defenderVillageId, entry);
   }
   return out;
 }

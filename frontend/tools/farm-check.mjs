@@ -7,7 +7,7 @@ import { createServer } from 'vite'
 const server = await createServer({ server: { middlewareMode: true, hmr: false, watch: null }, appType: 'custom', logLevel: 'silent' })
 const { contextButtons } = await server.ssrLoadModule('/src/lib/map.js')
 const { normalizeConfig, DEFAULT_SETTINGS } = await server.ssrLoadModule('/src/lib/farm.js')
-const { farmTargets, templateProblem, lastReports, cleanUnits, toBackendUnits, ago, reportDot } = await server.ssrLoadModule('/src/lib/farm.js')
+const { farmTargets, templateProblem, lastReports, cleanUnits, toBackendUnits, ago, reportDot, scoutsOnly, reportLoot } = await server.ssrLoadModule('/src/lib/farm.js')
 const me = { id: 1, x: 500, y: 500, myVillages: [{ id: 1 }, { id: 2 }] }
 const vs = [
   { id: 1, x: 500, y: 500, ownerType: 'PLAYER', points: 100 },
@@ -30,15 +30,59 @@ assert.deepEqual(cleanUnits({ spear: '7', sword: 0, bogus: 3, axe: -2, light: 2.
 assert.deepEqual(toBackendUnits({ spear: 3, spy: 1, knight: 1 }), { SPEAR: 3, SCOUT: 1, PALADIN: 1 })
 const rep = (o) => ({ defenderView: false, outcome: 'ATTACKER_WIN', attackerLosses: {}, lootWood: 100, lootClay: 100, lootIron: 100, lootCapacity: 300, ...o })
 const m = lastReports([
-  rep({ id: 1, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z', wallAfter: 3, lootCapacity: 900 }),
-  rep({ id: 2, defenderVillageId: 9, occurredAt: '2026-09-21T11:00:00Z', wallAfter: 2 }),
+  rep({ id: 1, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z', wallBefore: 4, wallAfter: 3, lootCapacity: 900 }),
+  rep({ id: 2, defenderVillageId: 9, occurredAt: '2026-09-21T11:00:00Z', wallBefore: 3, wallAfter: 2 }),
   rep({ id: 3, defenderVillageId: null, occurredAt: '2026-09-21T12:00:00Z' }),          // old report without ids: skipped
   rep({ id: 4, defenderVillageId: 9, defenderView: true, occurredAt: '2026-09-21T13:00:00Z' }), // somebody else's attack on us
 ])
 assert.equal(m.size, 1)
 assert.equal(m.get(9).battle.report.id, 2)     // the newest of the player's own battles
 assert.equal(m.get(9).battle.full, true)       // 300 loot of 300 capacity
-assert.equal(m.get(9).wall, 2)
+assert.equal(m.get(9).wall, 2)                 // the rams' damage
+
+// a raid with scouts along is still the last battle; the scouts' wall is from before the rams hit
+const spy = (level, buildings = {}) => ({ level, wood: 0, clay: 0, iron: 0, buildings, unitsHome: {}, unitsAway: {} })
+const mixed = lastReports([
+  rep({ id: 10, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z', attackerUnits: { LIGHT: 10 } }),
+  rep({ id: 11, defenderVillageId: 9, occurredAt: '2026-09-21T11:00:00Z', attackerUnits: { LIGHT: 10, SCOUT: 1, RAM: 5 },
+    spy: spy(2, { WALL: 3 }), wallBefore: 3, wallAfter: 1 }),
+]).get(9)
+assert.equal(mixed.battle.report.id, 11)
+assert.equal(mixed.spy.id, 11)
+assert.equal(mixed.wall, 1)
+// a scouting whose scouts all died says nothing: the last raid stays
+const failed = lastReports([
+  rep({ id: 12, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z', attackerUnits: { LIGHT: 10 } }),
+  rep({ id: 13, defenderVillageId: 9, occurredAt: '2026-09-21T11:00:00Z', attackerUnits: { SCOUT: 5 }, outcome: 'DEFENDER_WIN', lootWood: 0, lootClay: 0, lootIron: 0 }),
+])
+assert.equal(failed.get(9).battle.report.id, 12)
+assert.equal(lastReports([failed.get(9).battle.report, rep({ id: 14, defenderVillageId: 8, attackerUnits: { SCOUT: 1 }, outcome: 'DEFENDER_WIN', occurredAt: '2026-09-21T11:00:00Z' })]).has(8), false)
+// a lost battle or one without rams does not show the wall; scouts that saw no wall saw level 0
+const walls = lastReports([
+  rep({ id: 15, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z', attackerUnits: { SCOUT: 2 }, spy: spy(2, { WALL: 4 }) }),
+  rep({ id: 16, defenderVillageId: 9, occurredAt: '2026-09-21T11:00:00Z', attackerUnits: { AXE: 5 }, outcome: 'DEFENDER_WIN', wallBefore: 4, wallAfter: 4 }),
+  rep({ id: 17, defenderVillageId: 8, occurredAt: '2026-09-21T10:00:00Z', attackerUnits: { AXE: 5 }, wallBefore: 2, wallAfter: 2 }),
+  rep({ id: 18, defenderVillageId: 7, occurredAt: '2026-09-21T10:00:00Z', attackerUnits: { SCOUT: 2 }, spy: spy(1) }),
+  rep({ id: 19, defenderVillageId: 7, occurredAt: '2026-09-21T11:00:00Z', attackerUnits: { SCOUT: 2 }, spy: spy(2, { MAIN: 3 }) }),
+])
+assert.equal(walls.get(9).wall, 4)
+assert.equal(walls.get(9).battle.report.id, 16)
+assert.equal(walls.get(8).wall, undefined)
+assert.equal(walls.get(7).wall, 0)
+assert.equal(walls.get(7).battle, undefined)
+// reports of the same moment: the later one (higher id) wins, whatever order they came in
+const tie = lastReports([
+  rep({ id: 21, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z' }),
+  rep({ id: 20, defenderVillageId: 9, occurredAt: '2026-09-21T10:00:00Z' }),
+])
+assert.equal(tie.get(9).battle.report.id, 21)
+// the haul is counted like the report shows it, and a full haul is full despite the fractions
+assert.deepEqual(reportLoot(rep({ lootWood: 99.6, lootClay: 100.3, lootIron: 100.1 })), { wood: 99, clay: 100, iron: 100, total: 299, full: true })
+assert.equal(reportLoot(rep({ lootWood: 50, lootClay: 50, lootIron: 50 })).full, false)
+assert.equal(reportLoot(rep({ lootCapacity: 0, lootWood: 0, lootClay: 0, lootIron: 0 })).full, false)
+assert.equal(scoutsOnly({ attackerUnits: { SCOUT: 3 } }), true)
+assert.equal(scoutsOnly({ attackerUnits: { SCOUT: 3, LIGHT: 1 }, spy: spy(1) }), false)
+assert.equal(scoutsOnly({ spy: spy(1) }), true)                 // old report without the attacking units
 assert.equal(reportDot(rep({ attackerLosses: { SPEAR: 1 } })), 'yellow')
 assert.equal(reportDot(rep({ outcome: 'DEFENDER_WIN' })), 'red')
 assert.equal(ago('2026-09-21T10:00:00Z', Date.parse('2026-09-21T10:30:00Z')), '30 min ago')
