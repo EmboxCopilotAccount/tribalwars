@@ -25,10 +25,12 @@ public class AbandonmentService {
 
     private final WorldRepository worlds;
     private final VillageRepository villages;
+    private final MarketService market;
 
-    public AbandonmentService(WorldRepository worlds, VillageRepository villages) {
+    public AbandonmentService(WorldRepository worlds, VillageRepository villages, MarketService market) {
         this.worlds = worlds;
         this.villages = villages;
+        this.market = market;
     }
 
     @Scheduled(fixedDelayString = "${game.abandon-sweep-ms:60000}", initialDelay = 30000)
@@ -44,6 +46,7 @@ public class AbandonmentService {
                         ? NpcRetirement.isRetired(owner, world, now)
                         : minutes > 0 && owner.getLastLoginAt() != null && Duration.between(owner.getLastLoginAt(), now).toMinutes() >= minutes;
                 if (!abandoned) continue;
+                market.dropVillage(v.getId()); // its offers go, so nobody trades with an empty village
                 v.setOwner(null);
                 v.setOwnerType(OwnerType.BARBARIAN);
                 villages.save(v);

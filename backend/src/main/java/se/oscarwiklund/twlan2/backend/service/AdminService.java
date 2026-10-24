@@ -303,6 +303,7 @@ public class AdminService {
                 owned.forEach(v -> { v.setOwner(target); villages.save(v); });
             }
             case "barbarian" -> owned.forEach(v -> {
+                market.dropVillage(v.getId());
                 v.setOwner(null);
                 v.setOwnerType(OwnerType.BARBARIAN);
                 v.setName("Abandoned Camp");
