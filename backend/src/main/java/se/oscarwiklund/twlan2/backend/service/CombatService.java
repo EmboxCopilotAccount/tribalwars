@@ -426,6 +426,8 @@ public class CombatService {
                 boolean back = m.getTargetVillage().getId().equals(village.getId()) && m.getType() == MovementType.RETURN;
                 if (out || back) m.getUnits().forEach((t, n) -> away.merge(t, n, Integer::sum));
             }
+            // and its support stationed in other villages
+            for (StationedTroops st : support.stationedFrom(village)) st.getUnits().forEach((t, n) -> { if (n != null && n > 0) away.merge(t, n, Integer::sum); });
             away.forEach((t, n) -> detail.put("spy_away:" + t.name(), n));
         }
     }
