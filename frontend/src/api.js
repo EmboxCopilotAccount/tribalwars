@@ -116,6 +116,7 @@ export const api = {
   cancelResearch: (id) => request("/village/research/" + id, { method: "DELETE" }),
   mintCoin: (count = 1, villageId = null) => request("/village/coin", { method: "POST", body: JSON.stringify({ count, villageId }) }),
   cancelBuild: (id) => request("/village/build/" + id, { method: "DELETE" }),
+  moveBuild: (id, position) => request("/village/build/" + id + "/move", { method: "POST", body: JSON.stringify({ position }) }),
   train: (type, count) => request("/village/train", { method: "POST", body: JSON.stringify({ type, count }) }),
   decommission: (type, count) => request("/village/decommission", { method: "POST", body: JSON.stringify({ type, count }) }),
   player: (name) => request("/players/" + encodeURIComponent(name)),
@@ -125,6 +126,7 @@ export const api = {
   unseenAchievements: () => request("/achievements/unseen", { method: "POST" }),
   achievementRanking: () => request("/achievements/ranking"),
   cancelTrain: (id) => request("/village/train/" + id, { method: "DELETE" }),
+  moveTrain: (id, position) => request("/village/train/" + id + "/move", { method: "POST", body: JSON.stringify({ position }) }),
   renamePaladin: (name) => request("/village/paladin-name", { method: "PUT", body: JSON.stringify({ name }) }),
   support: (targetVillageId, units) =>
     request("/village/support", { method: "POST", body: JSON.stringify({ targetVillageId, units }) }),

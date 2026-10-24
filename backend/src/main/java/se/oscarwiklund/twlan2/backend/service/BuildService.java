@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -165,6 +167,35 @@ public class BuildService {
                         q.getTargetLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
             }
             buildQueueItemRepository.save(q);
+        }
+    }
+
+    // Moves a waiting order to another place in the queue (the drag handle of the build queue); the order being built
+    // stays first. Orders for the same building keep building up one level at a time: their levels are renumbered in
+    // the new order, each level keeping the surcharge it was paid with, so cancel() still refunds what was paid.
+    @Transactional
+    public void move(Village village, Long itemId, int toPosition) {
+        List<BuildQueueItem> queue = new ArrayList<>(buildQueueItemRepository.findByVillageOrderByPositionAsc(village));
+        BuildQueueItem item = queue.stream().filter(q -> q.getId().equals(itemId)).findFirst()
+                .orElseThrow(() -> new BuildException("No such construction order"));
+        int first = !queue.isEmpty() && queue.get(0).getStartedAt() != null ? 1 : 0;
+        if (queue.indexOf(item) < first) {
+            throw new BuildException("The order that is being built can't be moved");
+        }
+        queue.remove(item);
+        queue.add(Math.max(first, Math.min(queue.size(), toPosition)), item);
+
+        List<BuildQueueItem> sameType = queue.stream().filter(q -> q.getType() == item.getType()).toList();
+        List<BuildQueueItem> byLevel = sameType.stream().sorted(Comparator.comparingInt(BuildQueueItem::getTargetLevel)).toList();
+        List<Integer> levels = byLevel.stream().map(BuildQueueItem::getTargetLevel).toList();
+        List<Double> paid = byLevel.stream().map(BuildQueueItem::getCostMultiplier).toList();
+        for (int i = 0; i < sameType.size(); i++) {
+            sameType.get(i).setTargetLevel(levels.get(i));
+            sameType.get(i).setCostMultiplier(paid.get(i));
+        }
+        for (int i = 0; i < queue.size(); i++) {
+            queue.get(i).setPosition(i);
+            buildQueueItemRepository.save(queue.get(i));
         }
     }
 }

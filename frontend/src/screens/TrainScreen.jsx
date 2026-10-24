@@ -7,6 +7,7 @@
 //   <TrainBuildingBody id="stable"/>     the same page without the building header
 import { useState } from "react";
 import { levelOf } from "../lib/data";
+import { useQueueDrag } from "../lib/queueDrag";
 import { B, bigImg, confirmBox, showMessage } from "../lib/buildings";
 import {
   BUILDING_UNITS,
@@ -110,10 +111,15 @@ function cancelText(list, village) {
 }
 
 /* ---- current recruitment queue (queue.php) ---- */
-export function TrainQueue({ events, bid, now, onCancel, village }) {
+export function TrainQueue({ events, bid, now, onCancel, onMove, village }) {
+  // the server numbers each building's queue on its own (TrainService.move): the position is the target row's place
+  // among the orders of the same building, and an order can't be dropped on another building's row
+  const sameBuilding = (from, to) => events[from].building === events[to].building;
+  const placeInBuilding = (to) => events.slice(0, to).filter((e) => e.building === events[to].building).length;
+  const drag = useQueueDrag(onMove && ((from, to) => onMove(events[from], placeInBuilding(to))), sameBuilding);
   if (events.length === 0) return null;
   const next = events.find((e) => e.active);
-  const waiting = events.filter((e) => !e.active).length;
+  const waitingIn = (building) => events.filter((e) => !e.active && e.building === building).length;
   let c = 0;
   return (
     <div className="current_prod_wrapper">
@@ -146,7 +152,7 @@ export function TrainQueue({ events, bid, now, onCancel, village }) {
                 const cls = e.active ? "lit-item" : "";
                 const u = UNIT_BY_ID[e.unit];
                 return (
-                  <tr key={i} className={e.active ? "lit" : "sortable_row"} id={e.active ? undefined : `trainorder_${c++}`}>
+                  <tr key={i} className={e.active ? "lit" : "sortable_row"} id={e.active ? undefined : `trainorder_${c++}`} {...(e.active ? {} : drag.row(i))}>
                     <td className={cls + (e.decommission ? " decommission" : "")}>{`${e.decommission ? "-" : ""}${e.amount} ${e.amount === 1 ? u.name : u.plural}`}</td>
                     <td className={cls}>
                       {e.active ? (
@@ -169,10 +175,11 @@ export function TrainQueue({ events, bid, now, onCancel, village }) {
                       </a>
                     </td>
                     <ImportantNoBg as="td" className={cls}>
-                      {!e.active && waiting >= 2 && (
+                      {!e.active && waitingIn(e.building) >= 2 && (
                         <div
                           style={{ width: 11, height: 11, backgroundImage: "url(/graphic/sorthandle.png)", cursor: "pointer" }}
                           className="bqhandle"
+                          {...drag.handle(i)}
                           title={DRAG_TITLE}
                         />
                       )}
@@ -227,7 +234,7 @@ function affordability(village, cost, now) {
 }
 
 /* ---- train/building.php: queue + recruit form + "not available" table for the units of `buildings` ---- */
-function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommission, onCancelTrain, busy, go }) {
+function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommission, onCancelTrain, onMoveTrain, busy, go }) {
   const now = useNowTick();
   const popup = useUnitPopup();
   const [counts, setCounts] = useState({});
@@ -290,7 +297,7 @@ function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommissi
         <tbody>
           <tr>
             <td>
-              <TrainQueue events={events} bid={queueId} now={now} onCancel={onCancelTrain} village={village} />
+              <TrainQueue events={events} bid={queueId} now={now} onCancel={onCancelTrain} onMove={onMoveTrain} village={village} />
               {available.length > 0 && (
                 <form id="train_form" method="post" onSubmit={submit}>
                   <table className="vis" style={{ width: "100%" }}>
@@ -434,7 +441,7 @@ function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommissi
 }
 
 /* ---- screen=train: recruitment overview (all buildings' units) ---- */
-export function TrainScreen({ village, onTrain, onDecommission, onCancelTrain, busy, go }) {
+export function TrainScreen({ village, onTrain, onDecommission, onCancelTrain, onMoveTrain, busy, go }) {
   const [parts, navigate] = useHashNav("train", go);
   const mode = parts[0] === "decommission" ? "decommission" : "train";
   const tab = (m) => (m === mode ? "selected" : undefined);
@@ -468,7 +475,7 @@ export function TrainScreen({ village, onTrain, onDecommission, onCancelTrain, b
         isTrain={mode === "train"}
         onTrain={onTrain}
         onDecommission={onDecommission}
-        onCancelTrain={onCancelTrain}
+        onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain}
         busy={busy}
         go={go}
       />
@@ -477,7 +484,7 @@ export function TrainScreen({ village, onTrain, onDecommission, onCancelTrain, b
 }
 
 /* ---- screen=barracks|stable|garage, level > 0: layouts/building.php (mode menu) around train/building.php ---- */
-export function TrainBuildingBody({ village, id, onTrain, onDecommission, onCancelTrain, busy, go }) {
+export function TrainBuildingBody({ village, id, onTrain, onDecommission, onCancelTrain, onMoveTrain, busy, go }) {
   const [mode, setMode] = useState("train");
   return (
     <>
@@ -517,7 +524,7 @@ export function TrainBuildingBody({ village, id, onTrain, onDecommission, onCanc
         isTrain={mode === "train"}
         onTrain={onTrain}
         onDecommission={onDecommission}
-        onCancelTrain={onCancelTrain}
+        onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain}
         busy={busy}
         go={go}
       />
@@ -525,7 +532,7 @@ export function TrainBuildingBody({ village, id, onTrain, onDecommission, onCanc
   );
 }
 
-export function TrainBuildingScreen({ village, id, onTrain, onDecommission, onCancelTrain, busy, go }) {
+export function TrainBuildingScreen({ village, id, onTrain, onDecommission, onCancelTrain, onMoveTrain, busy, go }) {
   const b = B[id];
   const level = levelOf(village, b.type);
   return (
@@ -543,7 +550,7 @@ export function TrainBuildingScreen({ village, id, onTrain, onDecommission, onCa
           </tr>
         </tbody>
       </table>
-      {level > 0 && <TrainBuildingBody village={village} id={id} onTrain={onTrain} onDecommission={onDecommission} onCancelTrain={onCancelTrain} busy={busy} go={go} />}
+      {level > 0 && <TrainBuildingBody village={village} id={id} onTrain={onTrain} onDecommission={onDecommission} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} busy={busy} go={go} />}
     </>
   );
 }

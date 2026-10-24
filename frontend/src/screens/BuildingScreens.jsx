@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { fmtDuration, onTime } from "../lib/data";
 import { capacityFactor, populationFactor, productionFactor } from "../lib/bonus";
 import { GreyNum, MissingScreen, Timer } from "../lib/ui";
+import { useQueueDrag } from "../lib/queueDrag";
 import { SmithBody } from "./buildings/SmithBody";
 import { SnobBody } from "./buildings/SnobBody";
 import { StatueBody } from "./buildings/StatueBody";
@@ -63,8 +64,9 @@ function BuildingHeader({ id, level }) {
 // the server lets an order with less than 3 minutes left be completed for free
 const FREE_FINISH_MS = 180 * 1000;
 
-function BuildQueue({ village, hq, onCancel, onFinish }) {
+function BuildQueue({ village, hq, onCancel, onMove, onFinish }) {
   const queue = village.buildQueue;
+  const drag = useQueueDrag(onMove && ((from, to) => onMove(queue[from], to)));
   if (queue.length === 0) return null;
   const rows = [];
   let cursor = null;
@@ -97,6 +99,7 @@ function BuildQueue({ village, hq, onCancel, onFinish }) {
                 key={r.idx}
                 className={r.active ? "lit nodrag" : "sortable_row nowrap"}
                 id={r.active ? undefined : `buildorder_${wi}`}
+                {...(r.active ? {} : drag.row(r.idx))}
               >
                 <td width="250" className="nowrap lit-item">
                   <img src={midImg(r.id, r.q.targetLevel)} title="" alt="" className="bmain_list_img" />
@@ -128,6 +131,7 @@ function BuildQueue({ village, hq, onCancel, onFinish }) {
                     <div
                       style={{ width: 11, height: 11, backgroundImage: "url(/graphic/sorthandle.png)", cursor: "pointer" }}
                       className="bqhandle"
+                      {...drag.handle(r.idx)}
                       title="Here you can change the order of your building queue by dragging them to the desired location with your mouse."
                     />
                   )}
@@ -350,7 +354,7 @@ function BuildingWrapper({ village, live, go, onBuild }) {
 }
 
 /* main/index.php */
-function MainBody({ village, go, onBuild, onCancelBuild, onFinishBuild, onRename }) {
+function MainBody({ village, go, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename }) {
   const live = useLiveRes(village);
   const pending = useRef(null);
   const qlen = village.buildQueue.length;
@@ -389,7 +393,7 @@ function MainBody({ village, go, onBuild, onCancelBuild, onFinishBuild, onRename
         <tbody>
           <tr>
             <td>
-              <BuildQueue village={village} hq={hq} onCancel={cancel} onFinish={onFinishBuild} />
+              <BuildQueue village={village} hq={hq} onCancel={cancel} onMove={onMoveBuild} onFinish={onFinishBuild} />
               <BuildingWrapper village={village} live={live} go={go} onBuild={build} />
             </td>
           </tr>
@@ -735,13 +739,13 @@ function LayoutModes({ id, modes, mode, go }) {
 /* Buildings whose level>0 page is the recruitment screen (TrainBuildingScreen, routed by App as screen=<id>). */
 const TRAIN_BUILDINGS = new Set(["barracks", "stable", "garage"]);
 
-export function BuildingScreen({ village, type, onBuild, onCancelBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
+export function BuildingScreen({ village, type, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
   const id = resolveId(type);
   if (!id || MISSING_CLASS[id]) return <MissingScreen name={MISSING_CLASS[id] ?? String(type)} />;
-  return <BuildingPage village={village} id={id} onBuild={onBuild} onCancelBuild={onCancelBuild} onFinishBuild={onFinishBuild} onRename={onRename} onTrain={onTrain} onCancelTrain={onCancelTrain} onRenamePaladin={onRenamePaladin} onMintCoin={onMintCoin} onResearch={onResearch} onCancelResearch={onCancelResearch} go={go} />;
+  return <BuildingPage village={village} id={id} onBuild={onBuild} onCancelBuild={onCancelBuild} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onRenamePaladin={onRenamePaladin} onMintCoin={onMintCoin} onResearch={onResearch} onCancelResearch={onCancelResearch} go={go} />;
 }
 
-function BuildingPage({ village, id, onBuild, onCancelBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
+function BuildingPage({ village, id, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
   const level = levelOfId(village, id);
   const toTrain = TRAIN_BUILDINGS.has(id) && level > 0;
   // "statue:inventory" (the App keeps the sub-mode in the location hash)
@@ -752,7 +756,7 @@ function BuildingPage({ village, id, onBuild, onCancelBuild, onFinishBuild, onRe
   }, [toTrain, go, id]);
 
   let body = null;
-  if (id === "main") body = <MainBody village={village} go={go} onBuild={onBuild} onCancelBuild={onCancelBuild} onFinishBuild={onFinishBuild} onRename={onRename} />;
+  if (id === "main") body = <MainBody village={village} go={go} onBuild={onBuild} onCancelBuild={onCancelBuild} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} />;
   else if (PIT_RES[id]) body = <PitBody village={village} id={id} level={level} />;
   else if (id === "storage") body = <StorageBody village={village} level={level} />;
   else if (id === "farm") body = <FarmBody village={village} level={level} />;
@@ -760,7 +764,7 @@ function BuildingPage({ village, id, onBuild, onCancelBuild, onFinishBuild, onRe
   else if (id === "wall") body = <WallBody village={village} level={level} />;
   else if (id === "smith") body = <SmithBody village={village} onResearch={onResearch} onCancelResearch={onCancelResearch} />;
   else if (id === "statue") body = <StatueBody village={village} mode={statueMode} onTrain={onTrain} onCancelTrain={onCancelTrain} onRenamePaladin={onRenamePaladin} />;
-  else if (id === "snob") body = <SnobBody village={village} mode={modeFromHash(id)} go={go} onTrain={onTrain} onCancelTrain={onCancelTrain} onMintCoin={onMintCoin} />;
+  else if (id === "snob") body = <SnobBody village={village} mode={modeFromHash(id)} go={go} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onMintCoin={onMintCoin} />;
 
   return (
     <>

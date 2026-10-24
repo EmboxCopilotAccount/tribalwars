@@ -50,7 +50,7 @@ function NestedGrey({ n }) {
 /* coin_train.php counters */
 const NO_NOBLES = { coins: 0, limit: 0, existing: 0, inProduction: 0, conquered: 0, possible: 0, coinsMissing: 1, coinsAlready: 0 };
 
-function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }) {
+function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMoveTrain, onMintCoin }) {
   const NOBLE = { ...NO_NOBLES, ...(village.nobles ?? {}) };
   const COIN = coinCost(village);
   const now = useNowTick();
@@ -87,7 +87,7 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }
 
   return (
     <>
-      {events.length > 0 && <TrainQueue events={events} bid="snob" now={now} onCancel={onCancelTrain} village={village} />}
+      {events.length > 0 && <TrainQueue events={events} bid="snob" now={now} onCancel={onCancelTrain} onMove={onMoveTrain} village={village} />}
       <table className="vis">
         <tbody>
           <tr>
@@ -422,7 +422,7 @@ function CoinMode({ village, onMintCoin }) {
 }
 
 /* coin_index.php: mode menu on the left, the selected mode on the right. */
-export function SnobBody({ village, mode, go, onTrain, onCancelTrain, onMintCoin }) {
+export function SnobBody({ village, mode, go, onTrain, onCancelTrain, onMoveTrain, onMintCoin }) {
   const popup = useUnitPopup();
   const level = levelOfId(village, "snob");
   const current = MODES.some(([m]) => m === mode) ? mode : "train";
@@ -449,7 +449,7 @@ export function SnobBody({ village, mode, go, onTrain, onCancelTrain, onMintCoin
             </td>
             <td valign="top">
               {current === "train" ? (
-                <TrainMode village={village} level={level} popup={popup} onTrain={onTrain} onCancelTrain={onCancelTrain} onMintCoin={onMintCoin} />
+                <TrainMode village={village} level={level} popup={popup} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onMintCoin={onMintCoin} />
               ) : (
                 <CoinMode village={village} onMintCoin={onMintCoin} />
               )}

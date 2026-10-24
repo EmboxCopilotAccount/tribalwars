@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -235,5 +236,25 @@ public class TrainService {
         trainQueueItemRepository.deleteByIdSafe(target.getId());
 
         trainQueues.resequence(village, Instant.now());
+    }
+
+    // Moves a waiting order to another place in its building's queue (the drag handle of the recruit queue); the
+    // order being recruited stays first.
+    @Transactional
+    public void move(Village village, Long itemId, int toPosition) {
+        TrainQueueItem item = trainQueueItemRepository.findByVillageOrderByPositionAsc(village).stream()
+                .filter(q -> q.getId().equals(itemId)).findFirst()
+                .orElseThrow(() -> new TrainException("No such recruitment order"));
+        List<TrainQueueItem> queue = new ArrayList<>(trainQueues.of(village, item.getType().recruitBuilding));
+        int first = queue.get(0).getStartedAt() != null ? 1 : 0;
+        if (queue.indexOf(item) < first) {
+            throw new TrainException("The order that is being recruited can't be moved");
+        }
+        queue.remove(item);
+        queue.add(Math.max(first, Math.min(queue.size(), toPosition)), item);
+        for (int i = 0; i < queue.size(); i++) {
+            queue.get(i).setPosition(i);
+            trainQueueItemRepository.save(queue.get(i));
+        }
     }
 }

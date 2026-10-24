@@ -43,4 +43,13 @@ public class BuildController {
         buildService.cancel(village, id);
         return gameFacade.toDto(village);
     }
+
+    public record MoveRequest(int position) {}
+
+    @PostMapping("/api/village/build/{id}/move")
+    public VillageStateDto move(@PathVariable Long id, @RequestBody MoveRequest request) {
+        Village village = gameFacade.playerHomeVillage();
+        buildService.move(village, id, request.position());
+        return gameFacade.toDto(village);
+    }
 }

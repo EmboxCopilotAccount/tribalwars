@@ -89,6 +89,15 @@ public class TrainController {
         return gameFacade.toDto(village);
     }
 
+    public record MoveRequest(int position) {}
+
+    @PostMapping("/api/village/train/{id}/move")
+    public VillageStateDto move(@PathVariable Long id, @RequestBody MoveRequest request) {
+        Village village = gameFacade.playerHomeVillage();
+        trainService.move(village, id, request.position());
+        return gameFacade.toDto(village);
+    }
+
     public record PaladinNameRequest(String name) {}
 
     @PutMapping("/api/village/paladin-name")
