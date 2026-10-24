@@ -107,4 +107,15 @@ class BuildAndPopulationTest {
         assertEquals(shown.nextClay(), clay - village.getClay(), 1.0);
         assertEquals(shown.nextIron(), iron - village.getIron(), 1.0);
     }
+
+    @Test
+    void queuedOrdersCarryTheFarmSpaceTheyReserve() {
+        fillResources();
+        setLevel(BuildingType.HEADQUARTERS, 3);
+        build.enqueue(village, BuildingType.BARRACKS); // barracks 0 -> 1 takes farm space
+
+        VillageStateDto.BuildQueueDto queued = facade.toDto(village).buildQueue().get(0);
+        assertTrue(queued.popIncrease() > 0);
+        assertEquals(BuildingType.BARRACKS.popIncrease(1), queued.popIncrease());
+    }
 }
