@@ -10,11 +10,14 @@ import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.AccountRepository;
 import se.oscarwiklund.twlan2.backend.repo.BuildingRepository;
 import se.oscarwiklund.twlan2.backend.repo.UnitStockRepository;
+import se.oscarwiklund.twlan2.backend.service.BuildService;
 import se.oscarwiklund.twlan2.backend.service.TrainService;
 import se.oscarwiklund.twlan2.backend.service.VillageService;
 import se.oscarwiklund.twlan2.backend.service.WorldService;
+import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Population and build costs as the village screens see them must match what the server checks and charges.
 @SpringBootTest
@@ -27,6 +30,7 @@ class BuildAndPopulationTest {
     @Autowired UnitStockRepository stocks;
     @Autowired VillageService villageService;
     @Autowired TrainService train;
+    @Autowired BuildService build;
     @Autowired GameFacade facade;
 
     Village village;
@@ -73,5 +77,34 @@ class BuildAndPopulationTest {
         train.decommission(village, UnitType.SPEAR, 20);
 
         assertEquals(before, villageService.populationUsed(village)); // the 20 still count once, until they leave
+    }
+
+    private void fillResources() {
+        setLevel(BuildingType.WAREHOUSE, 20);
+        setLevel(BuildingType.FARM, 20);
+        double cap = villageService.warehouseCapacity(village);
+        village.setWood(cap);
+        village.setClay(cap);
+        village.setIron(cap);
+    }
+
+    private static VillageStateDto.BuildingDto dtoOf(VillageStateDto state, BuildingType type) {
+        return state.buildings().stream().filter(b -> b.type().equals(type.name())).findFirst().orElseThrow();
+    }
+
+    @Test
+    void shownCostIncludesTheQueueSurcharge() {
+        fillResources();
+        for (int i = 0; i < 5; i++) build.enqueue(village, BuildingType.TIMBER_CAMP); // the free slots
+
+        VillageStateDto.BuildingDto shown = dtoOf(facade.toDto(village), BuildingType.CLAY_PIT);
+        int level = villageService.levelOf(village, BuildingType.CLAY_PIT) + 1;
+        assertTrue(shown.nextWood() > BuildingType.CLAY_PIT.woodCost(level)); // the 6th order costs extra
+
+        double wood = village.getWood(), clay = village.getClay(), iron = village.getIron();
+        build.enqueue(village, BuildingType.CLAY_PIT);
+        assertEquals(shown.nextWood(), wood - village.getWood(), 1.0); // what was shown is what was charged
+        assertEquals(shown.nextClay(), clay - village.getClay(), 1.0);
+        assertEquals(shown.nextIron(), iron - village.getIron(), 1.0);
     }
 }
