@@ -94,7 +94,7 @@ public class TickService {
         building.setLevel(item.getTargetLevel());
         buildingRepository.save(building);
         buildQueueItemRepository.deleteByIdSafe(item.getId());
-        achievements.count(village.getOwner(), village.getWorld(), "levels", 1);
+        if (!item.isDemolish()) achievements.count(village.getOwner(), village.getWorld(), "levels", 1);
         live.village(village);
         if (village.getOwner() != null && !village.getOwner().isNpc() && village.getWorld() != null) live.toWorld(village.getWorld().getId(), LiveUpdates.MAP); // (its points changed)
 
@@ -106,7 +106,7 @@ public class TickService {
                 int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
                 next.setStartedAt(doneAt); // right when the previous order finished, not when the tick noticed
                 next.setCompletesAt(doneAt.plusSeconds(next.getType().buildTimeSeconds(
-                        next.getTargetLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
+                        next.timedLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
             }
             buildQueueItemRepository.save(next);
         }

@@ -400,11 +400,15 @@ public class CombatService {
             b.setLevel(Math.max(0, newLevel));
             buildingRepository.save(b);
             // queued upgrades of it build on from the damaged level (each order is one level), instead of
-            // restoring the level they were ordered at when they complete
+            // restoring the level they were ordered at when they complete; queued demolitions go on down from it, and
+            // the ones the battle already did stay at the damaged level (they complete without a change; deleting one
+            // that is running would leave the queue without a running order)
             int next = b.getLevel();
             for (BuildQueueItem q : buildQueue.findByVillageOrderByPositionAsc(village)) {
                 if (q.getType() != type) continue;
-                q.setTargetLevel(++next);
+                if (!q.isDemolish()) next++;
+                else if (next - 1 >= BuildService.minLevel(type)) next--;
+                q.setTargetLevel(next);
                 buildQueue.save(q);
             }
         });

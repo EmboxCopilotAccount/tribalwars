@@ -29,6 +29,11 @@ public class BuildQueueItem {
     // kept so cancel() refunds what was actually paid regardless of later queue changes.
     private Double costMultiplier;
 
+    // true: this order tears one level down (HQ "Demolish", from HQ level 15) instead of building one up; targetLevel is
+    // the level after it. Default false so the column can be added to existing rows (ddl-auto=update).
+    @Column(columnDefinition = "boolean default false")
+    private boolean demolish;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -52,4 +57,10 @@ public class BuildQueueItem {
 
     public Double getCostMultiplier() { return costMultiplier; }
     public void setCostMultiplier(Double costMultiplier) { this.costMultiplier = costMultiplier; }
+
+    public boolean isDemolish() { return demolish; }
+    public void setDemolish(boolean demolish) { this.demolish = demolish; }
+
+    // The level whose build time the order takes: the one built, or for a demolition the one taken down.
+    public int timedLevel() { return demolish ? targetLevel + 1 : targetLevel; }
 }

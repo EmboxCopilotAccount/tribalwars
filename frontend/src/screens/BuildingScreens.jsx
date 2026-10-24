@@ -15,6 +15,7 @@ import {
   buildState,
   confirmBox,
   costAt,
+  demolitionsOfId,
   hideCapacity,
   levelOfId,
   midImg,
@@ -105,7 +106,7 @@ function BuildQueue({ village, hq, onCancel, onMove, onFinish }) {
                   <img src={midImg(r.id, r.q.targetLevel)} title="" alt="" className="bmain_list_img" />
                   {B[r.id].name}
                   <br />
-                  {`Level ${r.q.targetLevel}`}
+                  {r.q.demolish ? `Demolish to level ${r.q.targetLevel}` : `Level ${r.q.targetLevel}`}
                 </td>
                 <td width="100" className="nowrap lit-item">
                   {r.active ? <Timer target={r.finish} /> : <span>{fmtDuration(r.seconds * 1000)}</span>}
@@ -197,6 +198,17 @@ function BuildRow({ village, id, live, go, onBuild }) {
       <span style={{ fontSize: "0.9em" }}>{levelText(info.level)}</span>
     </td>
   );
+  const dto = b.type ? (village.buildings ?? []).find((x) => x.type === b.type) : null;
+  if (dto?.demolishing) {
+    return (
+      <tr id={`main_buildrow_${id}`}>
+        {head}
+        <td colSpan="6" align="center" className="inactive">
+          Being demolished
+        </td>
+      </tr>
+    );
+  }
   if (info.maxed) {
     return (
       <tr id={`main_buildrow_${id}`} className="completed">
@@ -353,8 +365,55 @@ function BuildingWrapper({ village, live, go, onBuild }) {
   );
 }
 
+/* From headquarters level 15 buildings can be taken down a level at a time (free; BuildService.demolish). */
+const DEMOLISH_HQ_LEVEL = 15;
+
+function DemolishTable({ village, onDemolish }) {
+  const rows = ORDER.filter((id) => B[id].type)
+    .map((id) => ({ id, dto: village.buildings?.find((x) => x.type === B[id].type), down: levelOfId(village, id) - demolitionsOfId(village, id) }))
+    .filter((r) => r.dto?.demolishSeconds > 0);
+  const demolish = (e, r) => {
+    e.preventDefault();
+    confirmBox(`Demolish ${B[r.id].name} to level ${r.down - 1}? Nothing is refunded.`, () => onDemolish?.(B[r.id].type));
+  };
+  return (
+    <>
+      <table id="demolish" className="vis nowrap" width="100%">
+        <tbody>
+          <tr>
+            <th width="220">Demolish</th>
+            <th width="100">Duration</th>
+            <th>Lower one level, nothing is refunded</th>
+          </tr>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>
+                <img src={midImg(r.id, r.down)} title={B[r.id].name} alt="" className="bmain_list_img" />
+                {B[r.id].name} <span style={{ fontSize: "0.9em" }}>{`(Level ${r.down})`}</span>
+              </td>
+              <td>
+                <span className="icon header time"></span>
+                {fmtDuration(r.dto.demolishSeconds * 1000)}
+              </td>
+              <td>
+                <a href="#" className="btn" onClick={(e) => demolish(e, r)}>{`Demolish to level ${r.down - 1}`}</a>
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan="3" className="inactive">No building can be demolished right now.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <br />
+    </>
+  );
+}
+
 /* main/index.php */
-function MainBody({ village, go, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename }) {
+function MainBody({ village, go, onBuild, onCancelBuild, onDemolish, onMoveBuild, onFinishBuild, onRename }) {
   const live = useLiveRes(village);
   const pending = useRef(null);
   const qlen = village.buildQueue.length;
@@ -395,6 +454,7 @@ function MainBody({ village, go, onBuild, onCancelBuild, onMoveBuild, onFinishBu
             <td>
               <BuildQueue village={village} hq={hq} onCancel={cancel} onMove={onMoveBuild} onFinish={onFinishBuild} />
               <BuildingWrapper village={village} live={live} go={go} onBuild={build} />
+              {hq >= DEMOLISH_HQ_LEVEL && <DemolishTable village={village} onDemolish={onDemolish} />}
             </td>
           </tr>
         </tbody>
@@ -739,13 +799,13 @@ function LayoutModes({ id, modes, mode, go }) {
 /* Buildings whose level>0 page is the recruitment screen (TrainBuildingScreen, routed by App as screen=<id>). */
 const TRAIN_BUILDINGS = new Set(["barracks", "stable", "garage"]);
 
-export function BuildingScreen({ village, type, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
+export function BuildingScreen({ village, type, onBuild, onCancelBuild, onDemolish, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
   const id = resolveId(type);
   if (!id || MISSING_CLASS[id]) return <MissingScreen name={MISSING_CLASS[id] ?? String(type)} />;
-  return <BuildingPage village={village} id={id} onBuild={onBuild} onCancelBuild={onCancelBuild} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onRenamePaladin={onRenamePaladin} onMintCoin={onMintCoin} onResearch={onResearch} onCancelResearch={onCancelResearch} go={go} />;
+  return <BuildingPage village={village} id={id} onBuild={onBuild} onCancelBuild={onCancelBuild} onDemolish={onDemolish} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onRenamePaladin={onRenamePaladin} onMintCoin={onMintCoin} onResearch={onResearch} onCancelResearch={onCancelResearch} go={go} />;
 }
 
-function BuildingPage({ village, id, onBuild, onCancelBuild, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
+function BuildingPage({ village, id, onBuild, onCancelBuild, onDemolish, onMoveBuild, onFinishBuild, onRename, onTrain, onCancelTrain, onMoveTrain, onRenamePaladin, onMintCoin, onResearch, onCancelResearch, go }) {
   const level = levelOfId(village, id);
   const toTrain = TRAIN_BUILDINGS.has(id) && level > 0;
   // "statue:inventory" (the App keeps the sub-mode in the location hash)
@@ -756,7 +816,7 @@ function BuildingPage({ village, id, onBuild, onCancelBuild, onMoveBuild, onFini
   }, [toTrain, go, id]);
 
   let body = null;
-  if (id === "main") body = <MainBody village={village} go={go} onBuild={onBuild} onCancelBuild={onCancelBuild} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} />;
+  if (id === "main") body = <MainBody village={village} go={go} onBuild={onBuild} onCancelBuild={onCancelBuild} onDemolish={onDemolish} onMoveBuild={onMoveBuild} onFinishBuild={onFinishBuild} onRename={onRename} />;
   else if (PIT_RES[id]) body = <PitBody village={village} id={id} level={level} />;
   else if (id === "storage") body = <StorageBody village={village} level={level} />;
   else if (id === "farm") body = <FarmBody village={village} level={level} />;

@@ -533,7 +533,7 @@ public class AdminService {
                 nb.setType(q.getType());
                 return nb;
             });
-            row.setLevel(Math.max(row.getLevel(), q.getTargetLevel()));
+            row.setLevel(q.isDemolish() ? Math.min(row.getLevel(), q.getTargetLevel()) : Math.max(row.getLevel(), q.getTargetLevel()));
             buildings.save(row);
             buildQueue.delete(q);
             builds++;

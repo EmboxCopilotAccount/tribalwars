@@ -46,6 +46,9 @@ public class BuildService {
 
         int currentLevel = villageService.levelOf(village, type);
         List<BuildQueueItem> queue = buildQueueItemRepository.findByVillageOrderByPositionAsc(village);
+        if (queue.stream().anyMatch(q -> q.getType() == type && q.isDemolish())) {
+            throw new BuildException(type.displayName() + " is being demolished");
+        }
         long alreadyQueuedOfType = queue.stream().filter(q -> q.getType() == type).count();
         int targetLevel = currentLevel + (int) alreadyQueuedOfType + 1;
 
@@ -69,7 +72,7 @@ public class BuildService {
             throw new BuildException("Warehouse too small for " + type.displayName() + " level " + targetLevel);
         }
 
-        int pendingPop = queue.stream().mapToInt(q -> q.getType().popIncrease(q.getTargetLevel())).sum();
+        int pendingPop = pendingPop(queue);
         int freePop = villageService.populationCapacity(village) - villageService.populationUsed(village) - pendingPop;
         if (type.popIncrease(targetLevel) > freePop) {
             throw new BuildException("Farm too small for " + type.displayName() + " level " + targetLevel
@@ -101,6 +104,62 @@ public class BuildService {
                     type.buildTimeSeconds(targetLevel, hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
         }
 
+        return buildQueueItemRepository.save(item);
+    }
+
+    // Farm space the queued upgrades will take (a demolition frees its space only once it is done).
+    static int pendingPop(List<BuildQueueItem> queue) {
+        return queue.stream().filter(q -> !q.isDemolish()).mapToInt(q -> q.getType().popIncrease(q.getTargetLevel())).sum();
+    }
+
+    // The HQ level from which buildings can be demolished (the original's headquarters description).
+    public static final int DEMOLISH_HQ_LEVEL = 15;
+
+    // Below this a building can't be demolished: a village keeps its headquarters, farm and warehouse.
+    public static int minLevel(BuildingType type) {
+        return type == BuildingType.HEADQUARTERS || type == BuildingType.FARM || type == BuildingType.WAREHOUSE ? 1 : 0;
+    }
+
+    // Queues taking one level of `type` down: free, nothing comes back, and it takes the build time of the level
+    // removed (the original's demolition time is compiled and not readable; this is the natural symmetric default).
+    // A building has either upgrades or demolitions queued, never both, so its levels stay one step apart.
+    @Transactional(noRollbackFor = BuildException.class)
+    public BuildQueueItem demolish(Village village, BuildingType type) {
+        villageService.settleResources(village);
+        if (villageService.levelOf(village, BuildingType.HEADQUARTERS) < DEMOLISH_HQ_LEVEL) {
+            throw new BuildException("Buildings can be demolished from Headquarters level " + DEMOLISH_HQ_LEVEL);
+        }
+        List<BuildQueueItem> queue = buildQueueItemRepository.findByVillageOrderByPositionAsc(village);
+        if (queue.stream().anyMatch(q -> q.getType() == type && !q.isDemolish())) {
+            throw new BuildException(type.displayName() + " is being upgraded");
+        }
+        long queuedDemolitions = queue.stream().filter(q -> q.getType() == type && q.isDemolish()).count();
+        int targetLevel = villageService.levelOf(village, type) - (int) queuedDemolitions - 1;
+        if (targetLevel < minLevel(type)) {
+            throw new BuildException(type.displayName() + " can't be demolished any further");
+        }
+        if (type == BuildingType.FARM) {
+            int capacity = (int) Math.floor(BuildingType.farmCapacity(targetLevel) * BonusType.populationFactor(village));
+            int needed = villageService.populationUsed(village) + pendingPop(queue);
+            if (capacity < needed) {
+                throw new BuildException("The farm can't be demolished: level " + targetLevel + " only feeds " + capacity
+                        + " and the village needs " + needed);
+            }
+        }
+
+        BuildQueueItem item = new BuildQueueItem();
+        item.setVillage(village);
+        item.setType(type);
+        item.setTargetLevel(targetLevel);
+        item.setDemolish(true);
+        item.setPosition(queue.size());
+        if (queue.isEmpty()) {
+            int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
+            Instant now = Instant.now();
+            item.setStartedAt(now);
+            item.setCompletesAt(now.plusSeconds(type.buildTimeSeconds(item.timedLevel(), hqLevel, settings.speedOf(village),
+                    WorldSettings.number(village.getWorld(), "buildMainFactor"))));
+        }
         return buildQueueItemRepository.save(item);
     }
 
@@ -144,10 +203,13 @@ public class BuildService {
                 .orElseThrow(() -> new BuildException("No such construction order"));
 
         int capacity = villageService.warehouseCapacity(village);
+        // a demolition takes the later demolitions of that building with it (they go further down)
         List<BuildQueueItem> removed = queue.stream()
-                .filter(q -> q.getType() == target.getType() && q.getTargetLevel() >= target.getTargetLevel())
+                .filter(q -> q.getType() == target.getType() && q.isDemolish() == target.isDemolish()
+                        && (target.isDemolish() ? q.getTargetLevel() <= target.getTargetLevel() : q.getTargetLevel() >= target.getTargetLevel()))
                 .toList();
         for (BuildQueueItem q : removed) {
+            if (q.isDemolish()) continue; // a demolition cost nothing
             double mult = q.getCostMultiplier() != null ? q.getCostMultiplier() : 1.0;
             village.setWood(Math.max(village.getWood(), Math.min(capacity, village.getWood() + q.getType().woodCost(q.getTargetLevel()) * mult)));
             village.setClay(Math.max(village.getClay(), Math.min(capacity, village.getClay() + q.getType().clayCost(q.getTargetLevel()) * mult)));
@@ -164,7 +226,7 @@ public class BuildService {
                 int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
                 q.setStartedAt(now);
                 q.setCompletesAt(now.plusSeconds(q.getType().buildTimeSeconds(
-                        q.getTargetLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
+                        q.timedLevel(), hqLevel, settings.speedOf(village), WorldSettings.number(village.getWorld(), "buildMainFactor"))));
             }
             buildQueueItemRepository.save(q);
         }
@@ -186,7 +248,9 @@ public class BuildService {
         queue.add(Math.max(first, Math.min(queue.size(), toPosition)), item);
 
         List<BuildQueueItem> sameType = queue.stream().filter(q -> q.getType() == item.getType()).toList();
-        List<BuildQueueItem> byLevel = sameType.stream().sorted(Comparator.comparingInt(BuildQueueItem::getTargetLevel)).toList();
+        // upgrades go up one level at a time, demolitions down
+        Comparator<BuildQueueItem> step = Comparator.comparingInt(BuildQueueItem::getTargetLevel);
+        List<BuildQueueItem> byLevel = sameType.stream().sorted(item.isDemolish() ? step.reversed() : step).toList();
         List<Integer> levels = byLevel.stream().map(BuildQueueItem::getTargetLevel).toList();
         List<Double> paid = byLevel.stream().map(BuildQueueItem::getCostMultiplier).toList();
         for (int i = 0; i < sameType.size(); i++) {

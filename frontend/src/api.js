@@ -111,6 +111,7 @@ export const api = {
   getReports: () => request("/reports"),
   renameVillage: (name) => request("/village/name", { method: "PUT", body: JSON.stringify({ name }) }),
   build: (type) => request("/village/build", { method: "POST", body: JSON.stringify({ type }) }),
+  demolish: (type) => request("/village/demolish", { method: "POST", body: JSON.stringify({ type }) }),
   finishBuild: (id) => request("/village/build/" + id + "/finish", { method: "POST" }),
   research: (type) => request("/village/research", { method: "POST", body: JSON.stringify({ type }) }),
   cancelResearch: (id) => request("/village/research/" + id, { method: "DELETE" }),

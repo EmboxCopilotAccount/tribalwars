@@ -190,7 +190,13 @@ export function levelOfId(village, id) {
 
 export function queuedOfId(village, id) {
   const t = B[id]?.type;
-  return t ? (village.buildQueue ?? []).filter((q) => q.type === t).length : 0;
+  return t ? (village.buildQueue ?? []).filter((q) => q.type === t && !q.demolish).length : 0;
+}
+
+/* Queued demolitions of `id` (they take its level down one at a time). */
+export function demolitionsOfId(village, id) {
+  const t = B[id]?.type;
+  return t ? (village.buildQueue ?? []).filter((q) => q.type === t && q.demolish).length : 0;
 }
 
 export function tierFor(id, level) {

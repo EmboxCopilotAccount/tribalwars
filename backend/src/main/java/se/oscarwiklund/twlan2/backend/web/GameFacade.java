@@ -136,9 +136,15 @@ public class GameFacade {
         double queueFactor = BuildService.queueCostMultiplier(village.getWorld(), queue.size());
         List<BuildingDto> buildings = Arrays.stream(BuildingType.values()).map(type -> {
             int level = villageService.levelOf(village, type);
-            long queuedOfType = queue.stream().filter(q -> q.getType() == type).count();
+            long queuedOfType = queue.stream().filter(q -> q.getType() == type && !q.isDemolish()).count();
             int targetLevel = level + (int) queuedOfType + 1;
             boolean maxed = targetLevel > type.maxLevel;
+            // the next demolition takes level `down` away (BuildService.demolish refuses the same cases)
+            long demolitions = queue.stream().filter(q -> q.getType() == type && q.isDemolish()).count();
+            boolean upgrading = queue.stream().anyMatch(q -> q.getType() == type && !q.isDemolish());
+            int down = level - (int) demolitions;
+            long demolishSeconds = hqLevel >= BuildService.DEMOLISH_HQ_LEVEL && !upgrading && down - 1 >= BuildService.minLevel(type)
+                    ? type.buildTimeSeconds(down, hqLevel, settings.speedOf(village), hqTimeFactor) : 0;
             return new BuildingDto(type.name(), level, type.maxLevel, maxed,
                     maxed ? 0 : withSurcharge(type.woodCost(targetLevel), queueFactor),
                     maxed ? 0 : withSurcharge(type.clayCost(targetLevel), queueFactor),
@@ -146,13 +152,14 @@ public class GameFacade {
                     maxed ? 0 : type.buildTimeSeconds(targetLevel, hqLevel, settings.speedOf(village), hqTimeFactor),
                     maxed ? 0 : type.popIncrease(targetLevel),
                     type.requirements().entrySet().stream()
-                            .allMatch(r -> villageService.levelOf(village, r.getKey()) >= r.getValue()));
+                            .allMatch(r -> villageService.levelOf(village, r.getKey()) >= r.getValue()),
+                    demolitions > 0, demolishSeconds);
         }).toList();
 
         List<BuildQueueDto> buildQueueDtos = queue.stream()
                 .map(q -> new BuildQueueDto(q.getType().name(), q.getTargetLevel(), q.getStartedAt(), q.getCompletesAt(), q.getId(),
-                        q.getType().buildTimeSeconds(q.getTargetLevel(), hqLevel, settings.speedOf(village), hqTimeFactor),
-                        q.getType().popIncrease(q.getTargetLevel())))
+                        q.getType().buildTimeSeconds(q.timedLevel(), hqLevel, settings.speedOf(village), hqTimeFactor),
+                        q.isDemolish() ? 0 : q.getType().popIncrease(q.getTargetLevel()), q.isDemolish()))
                 .toList();
 
         Map<String, Integer> units = new LinkedHashMap<>();

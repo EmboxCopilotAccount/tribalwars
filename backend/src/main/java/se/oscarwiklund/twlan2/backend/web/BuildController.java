@@ -30,6 +30,14 @@ public class BuildController {
         return gameFacade.toDto(village);
     }
 
+    // HQ "Demolish": one level of the building comes down (BuildService.demolish).
+    @PostMapping("/api/village/demolish")
+    public VillageStateDto demolish(@RequestBody BuildRequest request) {
+        Village village = gameFacade.playerHomeVillage();
+        buildService.demolish(village, BuildingType.valueOf(request.type()));
+        return gameFacade.toDto(village);
+    }
+
     @PostMapping("/api/village/build/{id}/finish")
     public VillageStateDto finish(@PathVariable Long id) {
         Village village = gameFacade.playerHomeVillage();

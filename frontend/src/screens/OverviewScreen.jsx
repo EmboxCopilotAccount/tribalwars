@@ -292,7 +292,7 @@ function Summary({ ctx, levels, go, onBuild, busy, visual, setVisual, showLevels
   for (const b of SCENE) {
     const info = levels[b.id].info;
     canUpgrade[b.id] =
-      !!info && !info.maxedOrQueued && village.wood >= info.nextWood && village.clay >= info.nextClay && village.iron >= info.nextIron;
+      !!info && !info.maxedOrQueued && !info.demolishing && village.wood >= info.nextWood && village.clay >= info.nextClay && village.iron >= info.nextIron;
   }
   const onUpgrade = (b) => {
     if (!busy && b.type) onBuild(b.type);
@@ -442,14 +442,14 @@ function BuildQueue({ village, onCancelBuild }) {
           const active = !!q.completesAt;
           const remaining = active ? new Date(q.completesAt).getTime() - Date.now() : null;
           // duration of a not yet started order: scale the next-level time by the original's 1.2 time factor
-          const waitingSecs = q.durationSeconds ?? (info ? Math.round(info.nextSeconds * 1.2 ** (q.targetLevel - (info.level + (village.buildQueue ?? []).filter((x) => x.type === q.type).length + 1))) : 0);
+          const waitingSecs = q.durationSeconds ?? (info ? Math.round(info.nextSeconds * 1.2 ** (q.targetLevel - (info.level + (village.buildQueue ?? []).filter((x) => x.type === q.type && !x.demolish).length + 1))) : 0);
           return (
             <tr key={i} className="queueRow" style={{ height: 50 }}>
               <td width="40px" align="center">
                 <img width="40" src={"/graphic/big_buildings/" + bigImageFile(b, q.targetLevel)} alt={b.name} />
               </td>
               <td>
-                {b.name}
+                {q.demolish ? `${b.name} (demolish)` : b.name}
                 <br />
                 <span className={active ? (remaining <= 0 ? "warn small" : "timer small") : "small"}>
                   {active ? (remaining <= 0 ? "overdue" : fmtDuration(remaining)) : fmtDuration(waitingSecs * 1000)}
