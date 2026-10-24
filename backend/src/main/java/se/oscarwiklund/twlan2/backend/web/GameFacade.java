@@ -204,6 +204,7 @@ public class GameFacade {
                 settings.travelSpeedOf(village),
                 WorldSettings.number(village.getWorld(), "basicDefense"),
                 WorldSettings.bool(village.getWorld(), "attackSelf"),
+                !"off".equals(WorldSettings.get(village.getWorld(), "morale")),
                 (int) Math.round((queueFactor - 1) * 100),
                 WorldSettings.number(village.getWorld(), "prodToSeconds"), WorldSettings.number(village.getWorld(), "prodToMinutes"),
                 settings.worldNameOf(village),

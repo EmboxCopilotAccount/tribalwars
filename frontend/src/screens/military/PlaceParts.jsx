@@ -504,7 +504,7 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
 }
 
 /* ---------------- confirmation step (command_confirm.php) ---------------- */
-export function CommandConfirm({ target, units, isAttack, duration, now, busy, onSend, go }) {
+export function CommandConfirm({ target, units, isAttack, duration, morale = 100, now, busy, onSend, go }) {
   const attackName = isAttack ? `Confirm attack on ${target.name}` : `Confirm support for ${target.name}`;
   const capacity = UNIT_LIST.reduce((s, u) => s + (units[u.id] || 0) * u.carry, 0);
   const arrival = fmtOnTime(now + duration * 1000);
@@ -611,7 +611,7 @@ export function CommandConfirm({ target, units, isAttack, duration, now, busy, o
           {isAttack && (
             <tr>
               <td>Morale:</td>
-              <td style={{ fontWeight: "bold" }}>{"100%"}</td>
+              <td style={{ fontWeight: "bold" }}>{`${morale}%`}</td>
             </tr>
           )}
 

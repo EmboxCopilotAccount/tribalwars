@@ -3,7 +3,7 @@ import { bonusOf } from "../../lib/bonus";
 
 /* Content of #map_popup: the "tpl_popup" template of the original (no extra info; the tribe row is the template's info_ally_row;
    a bonus village gets the picture cell and the bold text row of the template). */
-export function MapPopupContent({ village }) {
+export function MapPopupContent({ village, morale = null }) {
   const bonus = bonusOf(village.bonus);
   return (
     <table id="info_content" className="vis" style={{ backgroundColor: "#e5d7b2", width: "auto" }}>
@@ -41,6 +41,12 @@ export function MapPopupContent({ village }) {
         ) : (
           <tr id="info_left_row">
             <td colSpan={2}>abandoned</td>
+          </tr>
+        )}
+        {morale != null && (
+          <tr id="info_moral_row">
+            <td>Morale:</td>
+            <td id="info_moral">{morale}%</td>
           </tr>
         )}
         {village.tribeName && (

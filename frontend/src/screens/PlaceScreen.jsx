@@ -3,7 +3,7 @@
 //   command: form (units, target field, Attack/Support) -> confirm step (try=confirm) -> send
 import { useState } from "react";
 import { PreErrorBox } from "../lib/ui";
-import { ID_TO_TYPE, UNIT_LIST, travelSeconds, unitsAtHome, useHashNav, useNowTick } from "../lib/military";
+import { ID_TO_TYPE, UNIT_LIST, moraleAgainst, travelSeconds, unitsAtHome, useHashNav, useNowTick } from "../lib/military";
 import { CommandConfirm, CommandForm, PlaceHeader, SimMode, TargetField, UnitsMode } from "./military/PlaceParts";
 import { pushRecent } from "../lib/targets";
 import { FarmAssistant } from "./military/FarmAssistant";
@@ -117,6 +117,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
         units={confirm.units}
         isAttack={confirm.isAttack}
         duration={durationSeconds(confirm)}
+        morale={moraleAgainst(village, villages, confirm.target)}
         now={now}
         busy={busy}
         onSend={send}

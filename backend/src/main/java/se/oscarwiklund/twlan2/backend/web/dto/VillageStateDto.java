@@ -29,6 +29,7 @@ public record VillageStateDto(
         double travelSpeed, // world speed times the world's unit speed: what troops travel at
         double basicDefense, // free defence every village has on top of its troops (world setting)
         boolean attackSelf, // whether this world lets a player attack their own villages
+        boolean moraleOn, // world setting morale is not "off": attacks on much smaller players are weakened
         int buildQueueSurcharge, // percent the next build order costs extra for its queue position (0 = none)
         double prodToSeconds,
         double prodToMinutes,

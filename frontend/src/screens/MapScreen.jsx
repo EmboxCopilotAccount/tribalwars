@@ -4,7 +4,7 @@ import { api } from "../api";
 import { useLiveTopic, usePollMs } from "../lib/live";
 import { PLAYER_NAME, fmtDuration, villagePoints } from "../lib/data";
 import { loadSettings as loadFarmSettings, loadTemplates, templateProblem, toBackendUnits } from "../lib/farm";
-import { UNIT_BY_ID, travelSeconds, unitsAtHome } from "../lib/military";
+import { UNIT_BY_ID, morale, travelSeconds, unitsAtHome } from "../lib/military";
 import { pushRecent } from "../lib/targets";
 import {
   BIAS,
@@ -146,6 +146,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
   const [overVillage, setOverVillage] = useState(false);
   const [ctxEnabled, setCtxEnabledState] = useState(() => loadSetting("context", true));
   const [popupEnabled, setPopupEnabledState] = useState(() => loadSetting("popup", true));
+  const [moraleShown, setMoraleShownState] = useState(() => loadSetting("popup_moral", true));
   const [favorites, setFavorites] = useState(() => new Set(loadSetting("favorites", [])));
   const [worldOpen, setWorldOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -173,6 +174,14 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
     saveSetting("popup", v);
     if (!v) hidePopup();
   };
+
+  const setMoraleShown = (v) => {
+    setMoraleShownState(v);
+    saveSetting("popup_moral", v);
+  };
+  // the popup's morale: what an attack from this player on another player's village would fight with
+  const myPoints = infos.find((v) => v.owner === 1)?.ownerPoints ?? 0;
+  const popupMorale = (v) => (moraleShown && village.moraleOn && v.owner === 2 ? morale(myPoints, v.ownerPoints) : null);
 
   const hidePopup = useCallback(() => setPopup((p) => (p && p.visible ? { ...p, visible: false } : p)), []);
 
@@ -487,7 +496,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
       className="nowrap"
       style={{ position: "absolute", top: 0, left: 0, minWidth: 150, display: popup && popup.visible ? "block" : "none", zIndex: 19, direction: "ltr" }}
     >
-      {popup && <MapPopupContent village={popup.village} />}
+      {popup && <MapPopupContent village={popup.village} morale={popupMorale(popup.village)} />}
     </div>
   );
   const navCell = (dx, dy, img, style) => (
@@ -671,6 +680,8 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
                 setCtxEnabled={setCtxEnabled}
                 popupEnabled={popupEnabled}
                 setPopupEnabled={setPopupEnabled}
+                moraleShown={moraleShown}
+                setMoraleShown={setMoraleShown}
                 onToggleWorld={() => setWorldOpen(!worldOpen)}
                 onFocusXY={focusUser}
                 onResizeMap={(n) => {

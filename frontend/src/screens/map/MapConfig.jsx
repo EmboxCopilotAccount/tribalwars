@@ -15,6 +15,8 @@ export function MapConfig({
   setCtxEnabled,
   popupEnabled,
   setPopupEnabled,
+  moraleShown,
+  setMoraleShown,
   onToggleWorld,
   onFocusXY,
   onResizeMap,
@@ -35,6 +37,7 @@ export function MapConfig({
     setCy(r.y);
     if (r.focusY) document.getElementById("mapy")?.focus();
   };
+  // the original's popup options (hidden, they do nothing yet); "Show morale" works and sits under "Show popup"
   const cbRow = (id, name) => (
     <tr>
       <td>
@@ -43,7 +46,6 @@ export function MapConfig({
       <td>
         <label htmlFor={id}>{{
           map_popup_attack: "Show last attack",
-          map_popup_moral: "Show morale",
           map_popup_res: "Show resources",
           map_popup_pop: "Show population",
           map_popup_trader: "Show merchants",
@@ -128,13 +130,22 @@ export function MapConfig({
                 <img src="graphic/icons/slide_down.png" className="popup_options_toggler" />
               </td>
             </tr>
+            <tr>
+              <td style={{ paddingLeft: 16 }}>
+                <input type="checkbox" id="map_popup_moral" name="map_popup_moral" checked={moraleShown} disabled={!popupEnabled}
+                  onChange={(e) => setMoraleShown(e.target.checked)} />
+              </td>
+              <td>
+                <label htmlFor="map_popup_moral">Show morale in the popup</label>
+              </td>
+              <td></td>
+            </tr>
             <tr id="popup_options" style={{ display: "none" }}>
               <td style={{ paddingLeft: 8 }} colSpan={3}>
                 <form id="form_map_popup" onSubmit={(e) => e.preventDefault()}>
                   <table>
                     <tbody>
                       {cbRow("map_popup_attack", "map_popup_attack")}
-                      {cbRow("map_popup_moral", "map_popup_moral")}
                       {cbRow("map_popup_res", "map_popup_res")}
                       {cbRow("map_popup_pop", "map_popup_pop")}
                       {cbRow("map_popup_trader", "map_popup_trader")}

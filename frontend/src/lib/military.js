@@ -282,6 +282,27 @@ export function unitsAway(village) {
 
 // seconds a march takes from `from` to `to` (backend: MovementService.travelSeconds): minutes per field = 1 / (speed * 60),
 // the slowest unit sets the pace, the world speed divides it
+/* Points morale in percent, the backend's BattleCalculator.morale (the original's 3 * defender/attacker + 0.3, 30..100). */
+export function morale(attackerPoints, defenderPoints) {
+  if (attackerPoints <= 0 || defenderPoints >= attackerPoints) return 100;
+  return Math.round(Math.max(0.3, Math.min(1, 0.3 + (3 * defenderPoints) / attackerPoints)) * 100);
+}
+
+/* The morale an attack from `village` on `target` (an entry of the map's village list) would fight with. Barbarians,
+   own villages and worlds with morale off never weaken an attack. */
+export function moraleAgainst(village, villages, target) {
+  if (!village.moraleOn || !target || target.ownerType !== "PLAYER") return 100;
+  const mine = new Set((village.myVillages ?? []).map((v) => v.id));
+  if (mine.has(target.id)) return 100;
+  let attacker = 0;
+  let defender = 0;
+  for (const v of villages) {
+    if (mine.has(v.id)) attacker += v.points;
+    else if (v.ownerType === "PLAYER" && v.ownerName === target.ownerName) defender += v.points;
+  }
+  return morale(attacker, defender);
+}
+
 export function travelSeconds(from, to, unitIds, worldSpeed = 1) {
   const dist = Math.hypot(from.x - to.x, from.y - to.y);
   const slowest = Math.max(...unitIds.map((id) => Math.round(1 / (UNIT_BY_ID[id].speed * 60))));

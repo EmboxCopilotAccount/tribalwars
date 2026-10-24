@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Population and build costs as the village screens see them must match what the server checks and charges.
@@ -118,6 +119,13 @@ class BuildAndPopulationTest {
         assertEquals(shown.nextWood(), wood - village.getWood(), 1.0); // what was shown is what was charged
         assertEquals(shown.nextClay(), clay - village.getClay(), 1.0);
         assertEquals(shown.nextIron(), iron - village.getIron(), 1.0);
+    }
+
+    @Test
+    void theRallyPointKnowsWhetherMoraleCounts() {
+        assertTrue(facade.toDto(village).moraleOn()); // default "points"
+        village.getWorld().getSettings().put("morale", "off");
+        assertFalse(facade.toDto(village).moraleOn());
     }
 
     @Test
