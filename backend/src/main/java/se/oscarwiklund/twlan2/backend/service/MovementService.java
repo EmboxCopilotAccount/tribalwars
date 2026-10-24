@@ -66,10 +66,11 @@ public class MovementService {
         if (isSameOwner(origin, target) && !WorldSettings.bool(origin.getWorld(), "attackSelf")) {
             throw new MovementException("Cannot attack your own village");
         }
-        if (underProtection(target)) {
+        boolean self = isSameOwner(origin, target); // protection and the farm rule shield a player from others
+        if (!self && underProtection(target)) {
             throw new MovementException("This player is under beginner protection and cannot be attacked yet");
         }
-        if (target.getOwnerType() == OwnerType.PLAYER && WorldSettings.bool(origin.getWorld(), "farmRule")) {
+        if (!self && target.getOwnerType() == OwnerType.PLAYER && WorldSettings.bool(origin.getWorld(), "farmRule")) {
             int originPoints = worldPoints.byVillage(origin.getWorld()).getOrDefault(origin.getId(), 0);
             int targetPoints = worldPoints.byVillage(origin.getWorld()).getOrDefault(target.getId(), 0);
             if (targetPoints < originPoints / FARM_RULE_RATIO) {
@@ -163,6 +164,7 @@ public class MovementService {
         movement.setOriginVillage(origin);
         movement.setTargetVillage(target);
         movement.setType(type);
+        movement.setSelfAttack(type == MovementType.ATTACK && isSameOwner(origin, target));
         requestedUnits.forEach((unitType, count) -> {
             if (count != null && count > 0) movement.getUnits().put(unitType, count);
         });

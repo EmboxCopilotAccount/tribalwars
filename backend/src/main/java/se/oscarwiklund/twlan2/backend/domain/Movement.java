@@ -38,8 +38,15 @@ public class Movement {
     private Instant departedAt;
     private Instant arrivesAt;
 
+    // an attack on a village its sender already owned when it set off (attackSelf): it fights, unlike an attack on a
+    // village the sender conquers while it is on the road, which moves in. Null on older rows = false.
+    private Boolean selfAttack;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public boolean isSelfAttack() { return Boolean.TRUE.equals(selfAttack); }
+    public void setSelfAttack(boolean selfAttack) { this.selfAttack = selfAttack; }
 
     public Village getOriginVillage() { return originVillage; }
     public void setOriginVillage(Village originVillage) { this.originVillage = originVillage; }

@@ -204,7 +204,8 @@ public class TickService {
                     movementRepository.save(back);
                 }
                 movementRepository.delete(movement);
-            } else if (movement.getType() == MovementType.ATTACK && movement.getTargetVillage().getOwner() != null && movement.getOriginVillage().getOwner() != null
+            } else if (movement.getType() == MovementType.ATTACK && !movement.isSelfAttack()
+                    && movement.getTargetVillage().getOwner() != null && movement.getOriginVillage().getOwner() != null
                     && movement.getTargetVillage().getOwner().getId().equals(movement.getOriginVillage().getOwner().getId())) {
                 // the target was conquered (by this very player) while the troops were on their way: they move in
                 for (Map.Entry<UnitType, Integer> e : movement.getUnits().entrySet()) {

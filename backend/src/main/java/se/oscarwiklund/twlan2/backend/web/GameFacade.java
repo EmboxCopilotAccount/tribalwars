@@ -202,6 +202,7 @@ public class GameFacade {
                 buildings, buildQueueDtos, units, trainQueueDtos, unitCosts, outgoing, incoming,
                 settings.speedOf(village),
                 WorldSettings.number(village.getWorld(), "basicDefense"),
+                WorldSettings.bool(village.getWorld(), "attackSelf"),
                 WorldSettings.number(village.getWorld(), "prodToSeconds"), WorldSettings.number(village.getWorld(), "prodToMinutes"),
                 settings.worldNameOf(village),
                 village.getWorld() == null ? null : village.getWorld().getId(),

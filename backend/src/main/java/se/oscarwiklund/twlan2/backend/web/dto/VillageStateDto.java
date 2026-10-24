@@ -27,6 +27,7 @@ public record VillageStateDto(
         List<MovementDto> incomingMovements,
         double worldSpeed,
         double basicDefense, // free defence every village has on top of its troops (world setting)
+        boolean attackSelf, // whether this world lets a player attack their own villages
         double prodToSeconds,
         double prodToMinutes,
         String worldName,

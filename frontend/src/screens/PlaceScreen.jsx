@@ -78,7 +78,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     const sameTribe = !!myTribe && target.ownerTribeId === myTribe;
     if (button === "support" && !isOwn && !sameTribe) return setError("You can only send support to your own villages and to villages of your tribe members");
     if (button === "support" && !isOwn && units.snob > 0) return setError("Noblemen cannot be stationed in another player's village");
-    if (button !== "support" && isOwn) return setError("Cannot attack your own village");
+    if (button !== "support" && isOwn && !village.attackSelf) return setError("Cannot attack your own village");
     setError(null);
     setConfirm({ target, units, isAttack: button !== "support" });
   };
