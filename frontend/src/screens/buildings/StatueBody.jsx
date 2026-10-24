@@ -78,7 +78,7 @@ export function StatueBody({ village, mode, onTrain, onCancelTrain, onRenamePala
 
   return (
     <>
-      {events.length > 0 && <TrainQueue events={events} bid="statue" now={now} onCancel={onCancelTrain} />}
+      {events.length > 0 && <TrainQueue events={events} bid="statue" now={now} onCancel={onCancelTrain} village={village} />}
       <input type="hidden" id="knight_0" value="1" readOnly />
       {!village.paladinState ? (
         <form action={`game.php?village=${village.id}&screen=statue&action=train&`} method="post" onSubmit={train}>

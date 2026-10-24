@@ -87,7 +87,7 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMintCoin }
 
   return (
     <>
-      {events.length > 0 && <TrainQueue events={events} bid="snob" now={now} onCancel={onCancelTrain} />}
+      {events.length > 0 && <TrainQueue events={events} bid="snob" now={now} onCancel={onCancelTrain} village={village} />}
       <table className="vis">
         <tbody>
           <tr>

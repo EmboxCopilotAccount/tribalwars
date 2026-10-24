@@ -83,8 +83,34 @@ export function queueEvents(village, now) {
   return events;
 }
 
+/* What cancelling recruit orders gives back, like TrainService.cancel: 90% of the cost of the units not yet recruited
+   (rounded down per order), and nothing above the warehouse capacity. Decommission orders cost nothing to cancel. */
+function cancelText(list, village) {
+  const back = { wood: 0, stone: 0, iron: 0 };
+  const lost = { wood: 0, stone: 0, iron: 0 };
+  let units = 0;
+  for (const e of list) {
+    if (e.decommission) continue;
+    const u = UNIT_BY_ID[e.unit];
+    units += e.amount;
+    for (const r of ["wood", "stone", "iron"]) {
+      const full = u[r] * e.amount;
+      back[r] += Math.floor(full * 0.9);
+      lost[r] += full - Math.floor(full * 0.9);
+    }
+  }
+  if (units === 0) return "";
+  const fmtRes = (o) => `${o.wood} wood, ${o.stone} clay, ${o.iron} iron`;
+  let text = ` You get back 90% of the resources for the ${units} ${units === 1 ? "unit" : "units"} not yet recruited: ${fmtRes(back)}. Lost: ${fmtRes(lost)}.`;
+  const have = village && { wood: village.wood, stone: village.clay, iron: village.iron };
+  if (have && ["wood", "stone", "iron"].some((r) => have[r] + back[r] > village.warehouseCapacity)) {
+    text += " Your warehouse can't hold all of it; the rest is lost too.";
+  }
+  return text;
+}
+
 /* ---- current recruitment queue (queue.php) ---- */
-export function TrainQueue({ events, bid, now, onCancel }) {
+export function TrainQueue({ events, bid, now, onCancel, village }) {
   if (events.length === 0) return null;
   const next = events.find((e) => e.active);
   const waiting = events.filter((e) => !e.active).length;
@@ -136,7 +162,7 @@ export function TrainQueue({ events, bid, now, onCancel }) {
                         href="#"
                         onClick={(ev) => {
                           ev.preventDefault();
-                          if (onCancel) confirmBox(`Are you sure you want to cancel this ${e.decommission ? "decommissioning" : "recruitment"} order?`, () => onCancel(e));
+                          if (onCancel) confirmBox(`Are you sure you want to cancel this ${e.decommission ? "decommissioning" : "recruitment"} order?${cancelText([e], village)}`, () => onCancel(e));
                         }}
                       >
                         cancel
@@ -163,7 +189,7 @@ export function TrainQueue({ events, bid, now, onCancel }) {
                       href="#"
                       onClick={(ev) => {
                         ev.preventDefault();
-                        if (onCancel) confirmBox("Are you sure you want to cancel all recruitment orders?", async () => { for (const e of events) await onCancel(e); });
+                        if (onCancel) confirmBox(`Are you sure you want to cancel all recruitment orders?${cancelText(events, village)}`, async () => { for (const e of events) await onCancel(e); });
                       }}
                     >
                       cancel all
@@ -264,7 +290,7 @@ function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommissi
         <tbody>
           <tr>
             <td>
-              <TrainQueue events={events} bid={queueId} now={now} onCancel={onCancelTrain} />
+              <TrainQueue events={events} bid={queueId} now={now} onCancel={onCancelTrain} village={village} />
               {available.length > 0 && (
                 <form id="train_form" method="post" onSubmit={submit}>
                   <table className="vis" style={{ width: "100%" }}>
