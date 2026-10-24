@@ -62,29 +62,44 @@ const Cargo = ({ wood, clay, iron }) => (
   </>
 );
 
-/** Merchants on the road (this village's and everybody's that are coming to it). */
-export function ShipmentsTable({ shipments, go, title = "Merchants on the way" }) {
-  if (!shipments?.length) return null;
+/** Merchants on the road. The market state lists those of all the player's villages in this world. With `villageId` (the
+    market pages) only that village's are shown, seen from it: its own merchants out and back, and others' coming to it
+    (a delivery from another of your villages included); the "available" count next to them is that village's too.
+    Without it (the villages overview) every shipment is listed with the own village it belongs to. */
+export function ShipmentsTable({ shipments, go, title = "Merchants on the way", villageId = null }) {
+  const rows = (shipments ?? [])
+    .map((s) => (villageId == null ? s : { ...s, outgoing: s.originVillageId === villageId }))
+    .filter((s) => villageId == null || ((s.originVillageId === villageId || s.targetVillageId === villageId) && (s.outgoing || !s.returning)));
+  if (!rows.length) return null;
+  const perVillage = villageId == null;
   return (
     <table className="vis" width="100%">
       <tbody>
         <tr>
-          <th colSpan="5">{title}</th>
+          <th colSpan={perVillage ? 6 : 5}>{title}</th>
         </tr>
         <tr>
+          {perVillage && <th>Own village</th>}
           <th>Village</th>
           <th>Cargo</th>
           <th>Merchants</th>
           <th>Arrival</th>
           <th>Arrival in</th>
         </tr>
-        {shipments.map((s) => {
+        {rows.map((s) => {
           const otherId = s.outgoing ? s.targetVillageId : s.originVillageId;
           const otherName = s.outgoing ? s.targetName : s.originName;
           const x = s.outgoing ? s.targetX : s.originX;
           const y = s.outgoing ? s.targetY : s.originY;
+          const own = s.outgoing ? { id: s.originVillageId, name: s.originName, x: s.originX, y: s.originY }
+            : { id: s.targetVillageId, name: s.targetName, x: s.targetX, y: s.targetY };
           return (
             <tr key={s.id}>
+              {perVillage && (
+                <td>
+                  <a href="#" onClick={(e) => go(e, "info_village:" + own.id)}>{`${own.name} (${own.x}|${own.y})`}</a>
+                </td>
+              )}
               <td>
                 <a href="#" onClick={(e) => go(e, "info_village:" + otherId)}>{`${s.outgoing ? (s.returning ? "Return from " : "To ") : "From "}${otherName} (${x}|${y})`}</a>
               </td>
@@ -219,7 +234,7 @@ function SendMode({ village, villages, market, go, presetId }) {
           <input type="submit" className="btn" value="OK" />
         </p>
       </form>
-      <ShipmentsTable shipments={state?.shipments} go={go} />
+      <ShipmentsTable shipments={state?.shipments} go={go} villageId={village.id} />
     </>
   );
 }
@@ -260,7 +275,7 @@ function ResPicker({ value, onChange }) {
   );
 }
 
-function BuyMode({ market, go }) {
+function BuyMode({ village, market, go }) {
   const { state, act } = market;
   const [times, setTimes] = useState({});
   const [f, setF] = useState(loadBuy);
@@ -359,7 +374,7 @@ function BuyMode({ market, go }) {
         </tbody>
       </table>
       <p>Merchants: <b>{merchants.available}/{merchants.total}</b> — you pay the requested resource and your merchants bring the offered one back.</p>
-      <ShipmentsTable shipments={state?.shipments} go={go} />
+      <ShipmentsTable shipments={state?.shipments} go={go} villageId={village.id} />
     </>
   );
 }
@@ -489,10 +504,10 @@ export function MarketScreen({ village, villages = [], go }) {
           </table>
           <br />
           {mode === "send" && <SendMode key={presetId ?? "none"} village={village} villages={villages} market={market} go={go} presetId={presetId} />}
-          {mode === "other_offer" && <BuyMode market={market} go={go} />}
+          {mode === "other_offer" && <BuyMode village={village} market={market} go={go} />}
           {mode === "own_offer" && <SellMode market={market} go={go} />}
-          {mode === "traders" && <ShipmentsTable shipments={market.state?.shipments} go={go} title="Transports" />}
-          {mode === "traders" && market.state && market.state.shipments.length === 0 && <p>No merchants are on the road.</p>}
+          {mode === "traders" && <ShipmentsTable shipments={market.state?.shipments} go={go} title="Transports" villageId={village.id} />}
+          {mode === "traders" && market.state && !market.state.shipments.some((s) => s.originVillageId === village.id || (s.targetVillageId === village.id && !s.returning)) && <p>No merchants are on the road.</p>}
         </>
       )}
     </>
