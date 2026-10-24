@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { resClass } from "../lib/data";
 import { ShadowRow } from "../lib/ui";
+import { continentOf } from "../lib/military";
 
 // The original ships some inline styles as "margin:0;padding:0;"; keep the attribute verbatim.
 const rawStyle = (css) => (el) => {
@@ -84,7 +85,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [groupsRect, setGroupsRect] = useState(null);
   const cap = village.warehouseCapacity;
-  const continent = "K" + Math.floor(village.y / 100) + Math.floor(village.x / 100);
+  const continent = continentOf(village);
   const dt = Math.max(0, ((now ?? Date.now()) - (fetchedAt ?? Date.now())) / 1000);
   const tick = (value, perHour) => Math.min(cap, value + ((perHour ?? 0) / 3600) * dt);
   const link = (target) => (e) => go(e, target);
