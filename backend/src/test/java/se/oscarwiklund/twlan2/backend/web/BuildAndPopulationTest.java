@@ -106,7 +106,10 @@ class BuildAndPopulationTest {
         fillResources();
         for (int i = 0; i < 5; i++) build.enqueue(village, BuildingType.TIMBER_CAMP); // the free slots
 
-        VillageStateDto.BuildingDto shown = dtoOf(facade.toDto(village), BuildingType.CLAY_PIT);
+        VillageStateDto state = facade.toDto(village);
+        assertTrue(state.buildQueueSurcharge() > 0); // the "(+x%)" next to the prices
+        assertEquals(Math.round((BuildService.queueCostMultiplier(village.getWorld(), 5) - 1) * 100), state.buildQueueSurcharge());
+        VillageStateDto.BuildingDto shown = dtoOf(state, BuildingType.CLAY_PIT);
         int level = villageService.levelOf(village, BuildingType.CLAY_PIT) + 1;
         assertTrue(shown.nextWood() > BuildingType.CLAY_PIT.woodCost(level)); // the 6th order costs extra
 

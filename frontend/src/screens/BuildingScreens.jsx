@@ -165,6 +165,17 @@ function OrderProgress({ start, finish }) {
 
 /* --------------------------------------------------------- build table */
 
+/* The build queue's extra cost (world buildqueueStart/buildqueueMultiply), already included in the price it follows. */
+function QueueSurcharge({ village }) {
+  const pct = village.buildQueueSurcharge ?? 0;
+  if (pct <= 0) return null;
+  return (
+    <span className="queue_surcharge" title="Extra cost for ordering behind a long build queue" style={{ color: "#b40000", fontSize: "0.85em", marginLeft: 3 }}>
+      {`(+${pct}%)`}
+    </span>
+  );
+}
+
 function BuildRow({ village, id, live, go, onBuild }) {
   const b = B[id];
   const info = buildInfo(village, id);
@@ -199,14 +210,17 @@ function BuildRow({ village, id, live, go, onBuild }) {
       <td className={"cost_wood" + (live.wood < info.wood ? " warn" : "")} data-cost={info.wood}>
         <span className="icon header wood"></span>
         {info.wood}
+        <QueueSurcharge village={village} />
       </td>
       <td className={"cost_stone" + (live.stone < info.stone ? " warn" : "")} data-cost={info.stone}>
         <span className="icon header stone"></span>
         {info.stone}
+        <QueueSurcharge village={village} />
       </td>
       <td className={"cost_iron" + (live.iron < info.iron ? " warn" : "")} data-cost={info.iron}>
         <span className="icon header iron"></span>
         {info.iron}
+        <QueueSurcharge village={village} />
       </td>
       <td>
         <span className="icon header population"></span>

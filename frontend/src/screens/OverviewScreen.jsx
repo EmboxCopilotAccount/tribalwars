@@ -127,10 +127,11 @@ function extraInfo(b, ctx) {
   return null;
 }
 
-function upgradeLabelHtml(b, info) {
+function upgradeLabelHtml(b, info, surcharge) {
   const next = info.level + 1;
   return (
     resSpan("wood", info.nextWood) + " " + resSpan("stone", info.nextClay) + " " + resSpan("iron", info.nextIron) +
+    (surcharge > 0 ? ` <span style="color:#b40000;font-size:0.85em">(+${surcharge}%)</span>` : "") +
     `<br />Villagers needed: ${popCost(b, next + (info.queuedLevels ?? 0))}` +
     `<br />Building time: ${fmtDuration(info.nextSeconds * 1000)}`
   );
@@ -183,7 +184,7 @@ function VillageScene({ ctx, levels, showLevels, upgradeMode, canUpgrade, go, on
           const labelClass = [night ? "label_night" : "label", !exists && queued === 0 ? "label_no_lvl" : "", upgradable ? "can_upgrade" : ""]
             .filter(Boolean)
             .join(" ");
-          const tip = upgradable ? tipProps(upgradeLabelHtml(b, { ...levels[b.id].info, level, queuedLevels: queued })) : {};
+          const tip = upgradable ? tipProps(upgradeLabelHtml(b, { ...levels[b.id].info, level, queuedLevels: queued }, ctx.village.buildQueueSurcharge)) : {};
           return (
             <div
               key={b.id}
@@ -242,7 +243,9 @@ function ClassicalOverview({ ctx, levels, canUpgrade, go, onUpgrade }) {
           {built.map((b) => {
             const { level, queued, info } = levels[b.id];
             const html = canUpgrade[b.id]
-              ? `Wood: ${info.nextWood}, Clay: ${info.nextClay}, Iron: ${info.nextIron}, <br/>Population: ${popCost(b, level + queued + 1)} <br/>Building time: ${info.nextSeconds}`
+              ? `Wood: ${info.nextWood}, Clay: ${info.nextClay}, Iron: ${info.nextIron}` +
+                (ctx.village.buildQueueSurcharge > 0 ? ` <span style="color:#b40000">(+${ctx.village.buildQueueSurcharge}%)</span>` : "") +
+                `, <br/>Population: ${popCost(b, level + queued + 1)} <br/>Building time: ${info.nextSeconds}`
               : "";
             return (
               <tr key={b.id} id={"l_" + b.id}>
