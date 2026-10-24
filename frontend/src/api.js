@@ -131,8 +131,9 @@ export const api = {
   withdrawSupport: (armyId, units) =>
     request("/village/support/withdraw", { method: "POST", body: JSON.stringify({ armyId, units }) }),
   sendBackSupport: (armyId) => request("/village/support/sendback", { method: "POST", body: JSON.stringify({ armyId }) }),
-  attack: (targetVillageId, units) =>
-    request("/village/attack", { method: "POST", body: JSON.stringify({ targetVillageId, units }) }),
+  // catapultTarget: backend BuildingType the catapults aim at (undefined = random)
+  attack: (targetVillageId, units, catapultTarget) =>
+    request("/village/attack", { method: "POST", body: JSON.stringify({ targetVillageId, units, catapultTarget }) }),
 
   // ---- tribes (every action answers with the viewer's fresh tribe state)
   farm: () => request("/farm"),

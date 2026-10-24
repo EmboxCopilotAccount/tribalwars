@@ -17,6 +17,7 @@ import {
   TYPE_TO_ID,
   ID_TO_TYPE,
 } from "../../lib/military";
+import { B } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
 import { favoriteIds, lastAttacked, recentTargets } from "../../lib/targets";
 import { simulate } from "./sim";
@@ -512,6 +513,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
   const [name, setName] = useState(attackName);
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
+  const [aim, setAim] = useState(""); // the building the catapults aim at ("" = random), as on the original's confirm page
   const grouped = (n) => {
     const s = String(n);
     return s.length <= 3 ? [s] : [s.slice(0, -3), <span className="grey" key="g">.</span>, s.slice(-3)];
@@ -524,7 +526,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
         e.preventDefault();
         if (sent) return;
         setSent(true);
-        onSend();
+        onSend(aim);
       }}
     >
       <input type="hidden" name={isAttack ? "attack" : "support"} value="true" readOnly />
@@ -612,6 +614,26 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
             <tr>
               <td>Morale:</td>
               <td style={{ fontWeight: "bold" }}>{`${morale}%`}</td>
+            </tr>
+          )}
+
+          {isAttack && units.catapult > 0 && (
+            <tr>
+              <td className="nowrap">
+                <label htmlFor="building">Catapults aim at:</label>
+              </td>
+              <td>
+                <select id="building" name="building" value={aim} onChange={(e) => setAim(e.target.value)}>
+                  <option value="">Random building</option>
+                  {Object.values(B)
+                    .filter((b) => b.type)
+                    .map((b) => (
+                      <option key={b.type} value={b.type}>
+                        {b.name}
+                      </option>
+                    ))}
+                </select>
+              </td>
             </tr>
           )}
 

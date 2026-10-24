@@ -5,6 +5,7 @@ import se.oscarwiklund.twlan2.backend.domain.Village;
 import se.oscarwiklund.twlan2.backend.repo.VillageRepository;
 import se.oscarwiklund.twlan2.backend.service.MovementService;
 import se.oscarwiklund.twlan2.backend.service.SupportService;
+import se.oscarwiklund.twlan2.backend.domain.BuildingType;
 import se.oscarwiklund.twlan2.backend.web.dto.AttackRequest;
 import se.oscarwiklund.twlan2.backend.web.dto.ReportDto;
 import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto;
@@ -78,7 +79,8 @@ public class AttackController {
         }
 
         if (support) movementService.sendSupport(origin, target, units);
-        else movementService.sendAttack(origin, target, units);
+        else movementService.sendAttack(origin, target, units,
+                request.catapultTarget() == null || request.catapultTarget().isBlank() ? null : BuildingType.valueOf(request.catapultTarget()));
         return gameFacade.toDto(origin);
     }
 

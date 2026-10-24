@@ -315,7 +315,7 @@ export default function App() {
     showInfo(count === 1 ? "Gold coin minted." : `${count} gold coins minted.`);
   });
   const handleRename = wrap((name) => api.renameVillage(name));
-  const handleAttack = wrap((targetId, units) => api.attack(targetId, units));
+  const handleAttack = wrap((targetId, units, catapultTarget) => api.attack(targetId, units, catapultTarget));
   const handleSupport = wrap((targetId, units) => api.support(targetId, units));
   const handleWithdraw = wrap(async (armyId, units) => {
     await api.withdrawSupport(armyId, units);

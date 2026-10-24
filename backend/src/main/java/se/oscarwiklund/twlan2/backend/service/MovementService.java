@@ -58,6 +58,13 @@ public class MovementService {
         return Math.max(1, Math.round(distance * slowestMinutesPerField * 60 / worldSpeed));
     }
 
+    @Transactional(noRollbackFor = MovementException.class)
+    public Movement sendAttack(Village origin, Village target, Map<UnitType, Integer> requestedUnits, BuildingType catapultTarget) {
+        Movement m = sendAttack(origin, target, requestedUnits);
+        m.setCatapultTarget(catapultTarget);
+        return m;
+    }
+
     @Transactional(noRollbackFor = MovementException.class) // NPCs try things that may be refused
     public Movement sendAttack(Village origin, Village target, Map<UnitType, Integer> requestedUnits) {
         if (origin.getId().equals(target.getId())) {

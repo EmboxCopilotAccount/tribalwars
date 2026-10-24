@@ -180,10 +180,15 @@ public class CombatService {
                 wallAfter = Math.min(wallAfter, wallBefore - BattleCalculator.levelsDestroyed(rams, wallBefore));
             }
             int catapults = survivors.getOrDefault(UnitType.CATAPULT, 0);
-            if (catapults > 0) {
+            BuildingType aim = attack.getCatapultTarget();
+            if (catapults > 0 && aim == BuildingType.WALL) {
+                // aimed at the wall: they knock levels off what the rams left standing
+                wallAfter -= BattleCalculator.levelsDestroyed(catapults, wallAfter);
+            } else if (catapults > 0) {
                 List<Building> candidates = new ArrayList<>();
                 for (Building b : buildingRepository.findByVillage(defenderVillage)) {
-                    if (b.getLevel() > 0 && b.getType() != BuildingType.WALL) candidates.add(b);
+                    // aimed: only that building (none if it isn't built: the shot misses); else any but the wall
+                    if (b.getLevel() > 0 && (aim != null ? b.getType() == aim : b.getType() != BuildingType.WALL)) candidates.add(b);
                 }
                 if (!candidates.isEmpty()) {
                     Building target = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));

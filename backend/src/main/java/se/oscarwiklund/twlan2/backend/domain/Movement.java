@@ -42,8 +42,15 @@ public class Movement {
     // village the sender conquers while it is on the road, which moves in. Null on older rows = false.
     private Boolean selfAttack;
 
+    // the building the attacker's catapults aim at; null = a random one
+    @Enumerated(EnumType.STRING)
+    private BuildingType catapultTarget;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public BuildingType getCatapultTarget() { return catapultTarget; }
+    public void setCatapultTarget(BuildingType catapultTarget) { this.catapultTarget = catapultTarget; }
 
     public boolean isSelfAttack() { return Boolean.TRUE.equals(selfAttack); }
     public void setSelfAttack(boolean selfAttack) { this.selfAttack = selfAttack; }

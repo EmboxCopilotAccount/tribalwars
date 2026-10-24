@@ -85,7 +85,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
 
   const durationSeconds = (c) => travelSeconds(village, c.target, Object.keys(c.units), village.travelSpeed);
 
-  const send = async () => {
+  const send = async (catapultTarget) => {
     const units = {};
     for (const [id, n] of Object.entries(confirm.units)) units[ID_TO_TYPE[id]] = n;
     const target = confirm.target;
@@ -95,7 +95,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     setText("");
     setConfirmedTarget(null);
     pushRecent(village.worldId, target.id, isAttack);
-    await (isAttack ? onAttack : onSupport)(target.id, units);
+    await (isAttack ? onAttack(target.id, units, catapultTarget || undefined) : onSupport(target.id, units));
   };
 
   const errorBox = error && <div className="error_box">{error}</div>;

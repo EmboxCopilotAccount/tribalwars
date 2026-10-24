@@ -2,4 +2,5 @@ package se.oscarwiklund.twlan2.backend.web.dto;
 
 import java.util.Map;
 
-public record AttackRequest(Long targetVillageId, Map<String, Integer> units) {}
+// catapultTarget: a BuildingType name the catapults aim at (attacks only), null or absent = random
+public record AttackRequest(Long targetVillageId, Map<String, Integer> units, String catapultTarget) {}
