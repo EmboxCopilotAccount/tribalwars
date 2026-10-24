@@ -9,7 +9,7 @@ import { Timer } from "../../lib/ui";
 import { pushRecent } from "../../lib/targets";
 import {
   TEMPLATE_KEYS, ago, cleanUnits, farmTargets, lastReports, loadHidden, loadSettings, loadTemplates,
-  onFarmSynced, reportDot, saveHidden, saveSettings, saveTemplates, templateProblem, toBackendUnits,
+  onFarmSynced, plunderable, reportDot, saveHidden, saveSettings, saveTemplates, templateProblem, toBackendUnits,
 } from "../../lib/farm";
 
 const MAX_ROWS = 100;
@@ -188,6 +188,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
             <th />
             <th>Last attack</th>
             <th>Haul</th>
+            <th title="What the latest scouting saw, minus the hiding place">Resources</th>
             <th>Wall</th>
             <th>Village</th>
             <th>Points</th>
@@ -198,6 +199,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
           {shown.map((t) => {
             const h = history.get(t.id);
             const battle = h?.battle;
+            const loot = plunderable(h);
             const arrives = enRoute.get(t.id);
             const mark = sent[village.id + ":" + t.id];
             const justSent = mark && !arrives && !((reportedId.get(t.id) ?? 0) > mark.after);
@@ -219,6 +221,16 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                       <img src={`/graphic/max_loot/${battle.full ? 1 : 0}.png`} alt=""
                         title={battle.full ? "Full haul" : "Partial haul"} /> {battle.loot}
                     </>
+                  )}
+                </td>
+                <td className="nowrap">
+                  {loot && (
+                    <span className={loot.stale ? "grey" : undefined}
+                      title={`Scouted ${ago(loot.at, now)}${loot.hideKnown ? ", hiding place subtracted" : " (hiding place unknown)"}${loot.stale ? "; attacked since, so less is left" : ""}`}>
+                      {[["wood", loot.wood], ["stone", loot.clay], ["iron", loot.iron]].map(([k, n]) => (
+                        <span key={k} style={{ marginRight: 4 }}><span className={`icon header ${k}`} /> {n}</span>
+                      ))}
+                    </span>
                   )}
                 </td>
                 <td>{h?.wall ?? "?"}</td>
@@ -258,7 +270,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
             );
           })}
           {shown.length === 0 && (
-            <tr><td colSpan={9}>No villages match the filters.</td></tr>
+            <tr><td colSpan={10}>No villages match the filters.</td></tr>
           )}
         </tbody>
       </table>

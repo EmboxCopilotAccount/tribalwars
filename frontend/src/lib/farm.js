@@ -4,6 +4,7 @@
    (/api/farm), which is how it follows you to another browser. Sending itself goes through the normal attack command. */
 import { api } from "../api";
 import { ID_TO_TYPE, UNIT_LIST } from "./military";
+import { hideCapacity } from "./buildings";
 
 export const TEMPLATE_KEYS = ["A", "B", "C"];
 export const DEFAULT_SETTINGS = { maxDistance: 25, minPoints: 0, maxPoints: 0, npc: false }; // 0 = no limit
@@ -190,6 +191,27 @@ export function lastReports(reports) {
     if (entry.spy || entry.battle) out.set(r.defenderVillageId, entry);
   }
   return out;
+}
+
+/**
+ * What the latest scouting of a village (an entry of lastReports) says is there to plunder: its resources minus what
+ * the hiding place keeps out of reach (CombatService), as of that report. The hiding place is only known from scouts of
+ * level 2+ (hideKnown false: nothing subtracted). Scouts that came along with a raid saw the village before it was
+ * looted, so that raid's haul comes off. stale: a later attack has taken resources since. null without a scouting.
+ */
+export function plunderable(entry) {
+  const r = entry?.spy;
+  if (!r) return null;
+  const hideKnown = r.spy.level >= 2;
+  const level = r.spy.buildings?.HIDING_PLACE ?? 0;
+  const hidden = hideKnown && level > 0 ? hideCapacity(level) : 0;
+  const battle = entry.battle?.report;
+  const looted = battle === r ? reportLoot(r) : { wood: 0, clay: 0, iron: 0 };
+  const left = (seen, gone) => Math.max(0, seen - gone - hidden);
+  const out = { wood: left(r.spy.wood, looted.wood), clay: left(r.spy.clay, looted.clay), iron: left(r.spy.iron, looted.iron) };
+  const stale = !!battle && battle !== r
+    && (new Date(battle.occurredAt) - new Date(r.occurredAt) || (battle.id ?? 0) - (r.id ?? 0)) > 0;
+  return { ...out, total: out.wood + out.clay + out.iron, at: r.occurredAt, hideKnown, stale };
 }
 
 /** "5 min ago", "3 h ago", "2 d ago" */

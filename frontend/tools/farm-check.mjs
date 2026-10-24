@@ -7,7 +7,7 @@ import { createServer } from 'vite'
 const server = await createServer({ server: { middlewareMode: true, hmr: false, watch: null }, appType: 'custom', logLevel: 'silent' })
 const { contextButtons } = await server.ssrLoadModule('/src/lib/map.js')
 const { normalizeConfig, DEFAULT_SETTINGS } = await server.ssrLoadModule('/src/lib/farm.js')
-const { farmTargets, templateProblem, lastReports, cleanUnits, toBackendUnits, ago, reportDot, scoutsOnly, reportLoot } = await server.ssrLoadModule('/src/lib/farm.js')
+const { farmTargets, templateProblem, lastReports, cleanUnits, toBackendUnits, ago, reportDot, scoutsOnly, reportLoot, plunderable } = await server.ssrLoadModule('/src/lib/farm.js')
 const me = { id: 1, x: 500, y: 500, myVillages: [{ id: 1 }, { id: 2 }] }
 const vs = [
   { id: 1, x: 500, y: 500, ownerType: 'PLAYER', points: 100 },
@@ -118,5 +118,28 @@ assert.deepEqual(normalizeConfig(null), { templates: { A: {}, B: {}, C: {} }, se
 assert.deepEqual(
   normalizeConfig({ templates: { A: { spear: '5', bogus: 3 }, D: { axe: 1 } }, settings: { npc: true }, hidden: [3, 'x', 4.5, 8] }),
   { templates: { A: { spear: 5 }, B: {}, C: {} }, settings: { ...DEFAULT_SETTINGS, npc: true }, hidden: [3, 8] })
+// resources to plunder: the latest scouting minus the hiding place (known from level 2), minus a raid the scouts came with
+{
+  const t = (h) => new Date(Date.UTC(2026, 9, 24, h)).toISOString()
+  const scout = (id, h, level, res, buildings = {}) => ({ id, occurredAt: t(h), defenderVillageId: 9, outcome: 'ATTACKER_WIN',
+    attackerUnits: { SCOUT: 5 }, attackerLosses: {}, spy: { level, ...res, buildings } })
+  const raid = (id, h, extra = {}) => ({ id, occurredAt: t(h), defenderVillageId: 9, outcome: 'ATTACKER_WIN',
+    attackerUnits: { LIGHT: 10 }, attackerLosses: {}, lootWood: 0, lootClay: 0, lootIron: 0, lootCapacity: 800, ...extra })
+  const res = { wood: 1000, clay: 50, iron: 400 }
+  assert.equal(plunderable(lastReports([raid(1, 1)]).get(9)), null)                       // never scouted
+  let p = plunderable(lastReports([scout(1, 1, 1, res)]).get(9))                          // level 1: hiding place unknown
+  assert.deepEqual([p.wood, p.clay, p.iron, p.total, p.hideKnown, p.stale], [1000, 50, 400, 1450, false, false])
+  p = plunderable(lastReports([scout(1, 1, 2, res, { HIDING_PLACE: 1 })]).get(9))        // level 1 hides 150 of each
+  assert.deepEqual([p.wood, p.clay, p.iron, p.hideKnown], [850, 0, 250, true])
+  p = plunderable(lastReports([scout(1, 1, 2, res, {}), raid(2, 2)]).get(9))              // attacked after the scouting
+  assert.deepEqual([p.total, p.stale], [1450, true])
+  p = plunderable(lastReports([raid(1, 1), scout(2, 2, 2, res, {})]).get(9))              // scouted after the attack
+  assert.equal(p.stale, false)
+  const mixed = { ...raid(1, 1, { lootWood: 600, lootClay: 50, lootIron: 150 }), attackerUnits: { LIGHT: 10, SCOUT: 2 },
+    spy: { level: 2, ...res, buildings: {} } }                                           // scouts rode along: the haul comes off
+  p = plunderable(lastReports([mixed]).get(9))
+  assert.deepEqual([p.wood, p.clay, p.iron, p.stale], [400, 0, 250, false])
+}
+
 console.log('farm.js checks passed')
 await server.close()
