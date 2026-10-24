@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { UNITS, fmtDuration, onTime } from "../lib/data";
 import { commandInfo } from "../lib/military";
 import { Timer } from "../lib/ui";
+import { queueEvents } from "./TrainScreen";
 import {
   DEFAULT_ORDER, SCENE, WIDGET_TITLES, absInt, bigImageFile, greyInt, isNight, lsGet, lsSet, popCost, prodUnit,
   sceneLevels, visualImages,
@@ -85,12 +86,29 @@ function HiddenWidget({ id, dragProps }) {
 }
 
 /* ---------- summary (visual) ---------- */
+// when a queue runs empty: the running order at completesAt, the waiting ones one after another
+function chainedEnd(queue, now) {
+  let finish = null;
+  for (const q of queue) {
+    finish = q.completesAt ? new Date(q.completesAt).getTime() : (finish ?? now) + (q.durationSeconds ?? 0) * 1000;
+  }
+  return finish;
+}
+
+// end of the whole queue of building b (build queue for the headquarters, recruit queues, research), or null
+function queueEnd(b, village, now) {
+  if (b.id === "main") return chainedEnd(village.buildQueue ?? [], now);
+  if (b.id === "smith") return chainedEnd(village.researchQueue ?? [], now);
+  const ends = queueEvents(village, now).filter((e) => e.building === b.id).map((e) => e.finish);
+  return ends.length ? Math.max(...ends) : null;
+}
+
 function extraInfo(b, ctx) {
   const { village, fetchedAt, strong } = ctx;
-  if (b.id === "main") {
-    const active = (village.buildQueue ?? []).find((q) => q.completesAt);
-    if (!active) return null;
-    return new Date(active.completesAt).getTime() <= Date.now() ? <span className="warn">overdue</span> : <Timer target={active.completesAt} />;
+  const now = Date.now();
+  const end = queueEnd(b, village, now);
+  if (end != null) {
+    return end <= now ? <span className="warn">overdue</span> : <Timer target={new Date(end).toISOString()} />;
   }
   if (b.id === "storage") {
     const cap = village.warehouseCapacity;
