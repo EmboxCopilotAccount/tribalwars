@@ -92,6 +92,11 @@ public class CombatService {
         // which villages fought (the names alone are ambiguous: every barbarian village is an "Abandoned Camp")
         detail.put("att_village", attack.getOriginVillage().getId().intValue());
         detail.put("def_village", defenderVillage.getId().intValue());
+        // and where they were then (villages can move later, e.g. admin "compact world", or be deleted)
+        detail.put("att_x", attack.getOriginVillage().getX());
+        detail.put("att_y", attack.getOriginVillage().getY());
+        detail.put("def_x", defenderVillage.getX());
+        detail.put("def_y", defenderVillage.getY());
 
         boolean scoutsOnly = attackerUnits.keySet().stream().allMatch(t -> t == UnitType.SCOUT);
         int wallBefore = villageService.levelOf(defenderVillage, BuildingType.WALL);

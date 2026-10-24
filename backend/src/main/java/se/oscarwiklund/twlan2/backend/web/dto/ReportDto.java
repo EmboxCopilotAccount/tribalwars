@@ -31,7 +31,12 @@ public record ReportDto(
         String attackerPlayer,
         String defenderPlayer,
         Long attackerVillageId,
-        Long defenderVillageId
+        Long defenderVillageId,
+        // village coordinates at the time of the battle
+        Integer attackerX,
+        Integer attackerY,
+        Integer defenderX,
+        Integer defenderY
 ) {
     // What the surviving scouts saw (level 1 resources, 2 + buildings, 3 + troops at home, 4 + troops away).
     public record SpyDto(int level, int wood, int clay, int iron, Map<String, Integer> buildings,

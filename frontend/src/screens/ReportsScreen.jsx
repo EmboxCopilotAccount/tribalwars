@@ -70,6 +70,19 @@ function useVillages() {
   return villages;
 }
 
+// One side of a report, by the village id the backend stored - never by name: every barbarian village is an
+// "Abandoned Camp". Coordinates are the ones at the time of the battle; older reports fall back to the live village.
+function reportVillage(r, side, villages) {
+  const att = side === "attacker";
+  const id = att ? r.attackerVillageId : r.defenderVillageId;
+  const name = att ? r.attackerVillageName : r.defenderVillageName;
+  const x = att ? r.attackerX : r.defenderX;
+  const y = att ? r.attackerY : r.defenderY;
+  const live = id != null ? villages.find((v) => v.id === id) : undefined;
+  const at = x != null && y != null ? { x, y } : live;
+  return { id: live?.id ?? id, live, label: at ? villageDisplayName({ name, x: at.x, y: at.y }) : name };
+}
+
 const toIdMap = (byType) => {
   const out = {};
   for (const u of UNIT_LIST) out[u.id] = 0;
@@ -81,7 +94,6 @@ const toIdMap = (byType) => {
 function ReportList({ reports, villages, go, readIds, onDelete }) {
   const [sel, setSel] = useState({});
   const [pageSize, setPageSize] = useState("12");
-  const byName = (n) => villages.find((v) => v.name === n);
   const allSelected = reports.length > 0 && reports.every((r) => sel[r.id]);
   return (
     <>
@@ -119,8 +131,8 @@ function ReportList({ reports, villages, go, readIds, onDelete }) {
               <th>Received</th>
             </tr>
             {reports.map((r) => {
-              const to = byName(r.defenderVillageName);
-              const toName = to ? villageDisplayName(to) : r.defenderVillageName;
+              const fromName = reportVillage(r, "attacker", villages).label;
+              const toName = reportVillage(r, "defender", villages).label;
               return (
                 <tr key={r.id}>
                   <td>
@@ -140,7 +152,7 @@ function ReportList({ reports, villages, go, readIds, onDelete }) {
                       <span className="quickedit-content">
                         <a href="#" onClick={(e) => go(e, `report:all:${r.id}`)}>
                           <span className="quickedit-label">
-                            {`${attackerName(r)} (${r.attackerVillageName}) attacks ${toName}`}
+                            {`${attackerName(r)} (${fromName}) attacks ${toName}`}
                           </span>
                         </a>
                         {!readIds.has(r.id) && "(new)"}{" "}
@@ -322,10 +334,11 @@ function SpyInfo({ spy, popup }) {
 }
 
 function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
-  const from = villages.find((v) => v.name === r.attackerVillageName);
-  const to = villages.find((v) => v.name === r.defenderVillageName);
-  const fromName = from ? villageDisplayName(from) : r.attackerVillageName;
-  const toName = to ? villageDisplayName(to) : r.defenderVillageName;
+  const from = reportVillage(r, "attacker", villages);
+  const toSide = reportVillage(r, "defender", villages);
+  const to = toSide.live;
+  const fromName = from.label;
+  const toName = toSide.label;
   const won = r.outcome === "ATTACKER_WIN";
   const lossesA = toIdMap(r.attackerLosses);
   const lossesD = toIdMap(r.defenderLosses);
@@ -343,7 +356,7 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   const max = r.lootCapacity ?? used;
   const idx = reports.findIndex((x) => x.id === r.id);
   const next = reports[idx + 1] ?? r;
-  const subject = `${attackerName(r)} (${r.attackerVillageName}) attacks ${toName}`;
+  const subject = `${attackerName(r)} (${fromName}) attacks ${toName}`;
   const exportCode = useMemo(() => {
     try {
       return btoa(JSON.stringify(r));
@@ -502,8 +515,8 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                           <tr>
                             <td>target:</td>
                             <td>
-                              <span className="village_anchor contexted" data-player="0" data-id={to?.id ?? ""}>
-                                <a href="#" onClick={(e) => navigateTo(e, to?.id ? "info_village:" + to.id : "info_village", go)}>{toName}</a>{" "}
+                              <span className="village_anchor contexted" data-player="0" data-id={toSide.id ?? ""}>
+                                <a href="#" onClick={(e) => navigateTo(e, toSide.id ? "info_village:" + toSide.id : "info_village", go)}>{toName}</a>{" "}
                                 <a className="ctx" href="#" onClick={(e) => e.preventDefault()} />
                               </span>
                             </td>
