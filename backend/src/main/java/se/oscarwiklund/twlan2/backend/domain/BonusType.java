@@ -6,7 +6,7 @@ import java.util.Random;
 // code is the original's id: the browser draws the icon with CSS class bonus_icon_<code> (game.css,
 // graphic/overview/bonus_icons.png) and picture graphic/bonus/<image>.png ("stone" is what the original calls clay).
 // The original computes the effects in compiled code, so these are the classic Tribal Wars values: +100% production
-// of one resource, +10% of all three, +10% farm population, +50% warehouse capacity, a third less recruiting time
+// of one resource, +30% of all three, +10% farm population, +50% warehouse capacity and merchants, a third less recruiting time
 // in the barracks/stable, half in the workshop. A village keeps its bonus when it changes hands; world setting
 // bonusVillages = off switches every bonus off.
 public enum BonusType {
@@ -17,8 +17,8 @@ public enum BonusType {
     BARRACKS(5, "barracks", "Recruitment in the barracks is 33% faster"),
     STABLE(6, "stable", "Recruitment in the stable is 33% faster"),
     GARAGE(7, "garage", "Recruitment in the workshop is 50% faster"),
-    ALL(8, "all", "+10% production of all resources"),
-    STORAGE(9, "storage", "+50% storage capacity");
+    ALL(8, "all", "+30% production of all resources"),
+    STORAGE(9, "storage", "+50% storage capacity and merchants");
 
     public final int code;
     public final String image;
@@ -76,13 +76,15 @@ public enum BonusType {
     // ---- effects ---------------------------------------------------------------------------------------------------------
 
     public double production(BuildingType producer) {
-        if (this == ALL) return 1.1;
+        if (this == ALL) return 1.3;
         boolean mine = (this == WOOD && producer == BuildingType.TIMBER_CAMP) || (this == CLAY && producer == BuildingType.CLAY_PIT)
                 || (this == IRON && producer == BuildingType.IRON_MINE);
         return mine ? 2.0 : 1.0;
     }
 
     public double capacity() { return this == STORAGE ? 1.5 : 1.0; }
+
+    public double merchants() { return this == STORAGE ? 1.5 : 1.0; }
 
     public double population() { return this == FARM ? 1.1 : 1.0; }
 
@@ -103,6 +105,11 @@ public enum BonusType {
     public static double capacityFactor(Village v) {
         BonusType b = of(v);
         return b == null ? 1.0 : b.capacity();
+    }
+
+    public static double merchantFactor(Village v) {
+        BonusType b = of(v);
+        return b == null ? 1.0 : b.merchants();
     }
 
     public static double populationFactor(Village v) {

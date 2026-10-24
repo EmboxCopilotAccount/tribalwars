@@ -10,8 +10,8 @@ export const BONUS = {
   5: { image: "barracks", text: "Recruitment in the barracks is 33% faster", recruit: { building: "barracks", factor: 1 / 1.5 } },
   6: { image: "stable", text: "Recruitment in the stable is 33% faster", recruit: { building: "stable", factor: 1 / 1.5 } },
   7: { image: "garage", text: "Recruitment in the workshop is 50% faster", recruit: { building: "garage", factor: 0.5 } },
-  8: { image: "all", text: "+10% production of all resources", production: { wood: 1.1, stone: 1.1, iron: 1.1 } },
-  9: { image: "storage", text: "+50% storage capacity", capacity: 1.5 },
+  8: { image: "all", text: "+30% production of all resources", production: { wood: 1.3, stone: 1.3, iron: 1.3 } },
+  9: { image: "storage", text: "+50% storage capacity and merchants", capacity: 1.5 },
 };
 
 export const bonusOf = (code) => (code ? BONUS[code] ?? null : null);

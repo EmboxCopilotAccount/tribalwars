@@ -63,7 +63,9 @@ public class MarketService {
 
     // ---- merchants -------------------------------------------------------------------------------------------------
 
-    public int totalMerchants(Village v) { return merchantsForLevel(villageService.levelOf(v, BuildingType.MARKET)); }
+    public int totalMerchants(Village v) {
+        return (int) Math.floor(merchantsForLevel(villageService.levelOf(v, BuildingType.MARKET)) * BonusType.merchantFactor(v));
+    }
 
     @Transactional(readOnly = true)
     public int availableMerchants(Village v) {

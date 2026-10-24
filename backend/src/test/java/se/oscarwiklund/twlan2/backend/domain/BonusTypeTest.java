@@ -42,8 +42,10 @@ class BonusTypeTest {
         assertEquals(1.0, BonusType.WOOD.production(BuildingType.CLAY_PIT));
         assertEquals(2.0, BonusType.CLAY.production(BuildingType.CLAY_PIT));
         assertEquals(2.0, BonusType.IRON.production(BuildingType.IRON_MINE));
-        assertEquals(1.1, BonusType.ALL.production(BuildingType.TIMBER_CAMP));
-        assertEquals(1.1, BonusType.ALL.production(BuildingType.IRON_MINE));
+        assertEquals(1.3, BonusType.ALL.production(BuildingType.TIMBER_CAMP)); // the original's +30%
+        assertEquals(1.3, BonusType.ALL.production(BuildingType.IRON_MINE));
+        assertEquals(1.5, BonusType.STORAGE.merchants());
+        assertEquals(1.0, BonusType.WOOD.merchants());
         assertEquals(1.0, BonusType.STORAGE.production(BuildingType.TIMBER_CAMP));
     }
 
