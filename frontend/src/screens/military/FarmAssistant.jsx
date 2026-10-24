@@ -77,7 +77,9 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
   const [settings, setSettings] = useState(() => loadSettings(worldId));
   const [hidden, setHidden] = useState(() => loadHidden(worldId));
   const [sending, setSending] = useState(null); // "<villageId><template>" while the command is on its way
-  const [sent, setSent] = useState({}); // villageId -> template it was last sent with (this visit)
+  // "<from>:<to>" -> {name, after}: the template just sent, shown until its command is on its way or reported
+  // (`after`: the newest report id at sending; report ids only grow, so no clocks need to agree)
+  const [sent, setSent] = useState({});
   const [revision, setRevision] = useState(0); // bumped when the server's copy replaced ours, to rebuild the editor
   useEffect(
     () =>
@@ -102,6 +104,15 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
     }
     return out;
   }, [village]);
+  // the newest of the player's reports about each village (by id)
+  const reportedId = useMemo(() => {
+    const out = new Map();
+    for (const r of reports) {
+      if (r.defenderView || r.defenderVillageId == null) continue;
+      out.set(r.defenderVillageId, Math.max(out.get(r.defenderVillageId) ?? 0, r.id ?? 0));
+    }
+    return out;
+  }, [reports]);
 
   const changeSettings = (patch) => {
     const next = { ...settings, ...patch };
@@ -118,12 +129,13 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
   };
 
   const farm = async (target, name) => {
+    const after = reports.reduce((m, r) => Math.max(m, r.id ?? 0), 0);
     setSending(target.id + name);
     const ok = await onAttack(target.id, toBackendUnits(templates[name]));
     setSending(null);
     if (ok) {
       pushRecent(worldId, target.id, true);
-      setSent((s) => ({ ...s, [target.id]: name }));
+      setSent((s) => ({ ...s, [village.id + ":" + target.id]: { name, after } }));
     }
   };
 
@@ -187,6 +199,8 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
             const h = history.get(t.id);
             const battle = h?.battle;
             const arrives = enRoute.get(t.id);
+            const mark = sent[village.id + ":" + t.id];
+            const justSent = mark && !arrives && !((reportedId.get(t.id) ?? 0) > mark.after);
             return (
               <tr key={t.id}>
                 <td>
@@ -226,7 +240,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                         onClick={() => farm(t, name)} />
                     );
                   })}
-                  {sent[t.id] && !arrives && <span className="grey"> sent ({sent[t.id]})</span>}
+                  {justSent && <span className="grey"> sent ({mark.name})</span>}
                   {arrives && (
                     <span title="An attack is on its way">
                       {" "}<img src="/graphic/command/attack.png" alt="" /> <Timer target={arrives} />
