@@ -360,10 +360,11 @@ public class NpcService {
                 || ((archetype == NpcArchetype.RAIDER || archetype == NpcArchetype.BALANCED) && owner.getId() % 3 == 0);
     }
 
-    // Whether this NPC is meant to conquer villages on its world (and so needs an Academy).
-    private static boolean expanding(Village v, NpcArchetype archetype, NpcDifficulty difficulty) {
+    // Whether this NPC is meant to conquer villages on its world (and so needs an Academy and saves for coins).
+    static boolean expanding(Village v, NpcArchetype archetype, NpcDifficulty difficulty) {
         World world = v.getWorld();
-        return world != null && difficulty.expansionFor(world) != NpcDifficulty.Expansion.NONE && expands(archetype, v.getOwner());
+        return world != null && !"off".equals(WorldSettings.get(world, "noblemanSystem"))
+                && difficulty.expansionFor(world) != NpcDifficulty.Expansion.NONE && expands(archetype, v.getOwner());
     }
 
     private static int noblesNeeded(World world) {
