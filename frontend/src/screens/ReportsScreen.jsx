@@ -523,6 +523,9 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                             </tbody>
                           </table>
                           {r.morale != null && <h4>{`Morale: ${r.morale}%`}</h4>}
+                          {r.nightBonus != null && r.nightBonus > 100 && (
+                            <h4>{`Night bonus: defence x${r.nightBonus / 100}`}</h4>
+                          )}
                         </div>
                       </div>
 

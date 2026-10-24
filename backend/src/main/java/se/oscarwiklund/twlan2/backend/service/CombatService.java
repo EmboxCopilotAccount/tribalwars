@@ -140,6 +140,8 @@ public class CombatService {
             defenderLosses = battle.defenderLosses();
             detail.put("luck", (int) Math.round(luck * 100));
             detail.put("morale", (int) Math.round(morale * 100));
+            // the defence factor the night gave (100 by day), so the report can say why the defence was that strong
+            detail.put("night", (int) Math.round(Math.max(1, night) * 100));
         }
 
         for (Map.Entry<UnitType, Integer> e : attackerUnits.entrySet()) {

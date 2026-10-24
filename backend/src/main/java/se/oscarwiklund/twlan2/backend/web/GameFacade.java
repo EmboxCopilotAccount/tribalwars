@@ -325,7 +325,7 @@ public class GameFacade {
                 r.isDefenderView(), r.getAttackerPlayer(), r.getDefenderPlayer(),
                 d.containsKey("att_village") ? d.get("att_village").longValue() : null,
                 d.containsKey("def_village") ? d.get("def_village").longValue() : null,
-                d.get("att_x"), d.get("att_y"), d.get("def_x"), d.get("def_y"));
+                d.get("att_x"), d.get("att_y"), d.get("def_x"), d.get("def_y"), d.get("night"));
     }
 
     private static Map<String, Integer> section(Map<String, Integer> detail, String prefix) {

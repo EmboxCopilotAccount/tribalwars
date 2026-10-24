@@ -36,7 +36,9 @@ public record ReportDto(
         Integer attackerX,
         Integer attackerY,
         Integer defenderX,
-        Integer defenderY
+        Integer defenderY,
+        // the night bonus as a percentage of the defence (100 by day, 200 = doubled); null on older reports
+        Integer nightBonus
 ) {
     // What the surviving scouts saw (level 1 resources, 2 + buildings, 3 + troops at home, 4 + troops away).
     public record SpyDto(int level, int wood, int clay, int iron, Map<String, Integer> buildings,
