@@ -77,11 +77,12 @@ public final class BattleCalculator {
         }
     }
 
-    // World setting "morale = points": 100 % when the defender is as big as the attacker or bigger, sinking towards
-    // 30 % the smaller he is. Barbarian villages never weaken an attack.
+    // World setting "morale = points", the original's formula: 3 * defender/attacker points + 0.3, at most 100 %.
+    // So it only drops when the defender has less than about a quarter of the attacker's points, down to 30 %.
+    // Barbarian villages never weaken an attack.
     public static double morale(double attackerPoints, double defenderPoints) {
         if (attackerPoints <= 0 || defenderPoints >= attackerPoints) return 1;
-        return Math.max(0.3, Math.min(1, 0.3 + 0.7 * defenderPoints / attackerPoints));
+        return Math.max(0.3, Math.min(1, 0.3 + 3 * defenderPoints / attackerPoints));
     }
 
     // Units of a building/wall level needed to knock one level off it: 1.2^level, at least 2.

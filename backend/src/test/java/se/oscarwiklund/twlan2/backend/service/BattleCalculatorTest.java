@@ -81,7 +81,8 @@ class BattleCalculatorTest {
     void moraleCurve() {
         assertEquals(1, BattleCalculator.morale(1000, 1000), 1e-9);
         assertEquals(1, BattleCalculator.morale(1000, 5000), 1e-9);
-        assertEquals(0.65, BattleCalculator.morale(1000, 500), 1e-9);
+        assertEquals(1, BattleCalculator.morale(1000, 500), 1e-9); // half the points: no penalty in the original
+        assertEquals(0.6, BattleCalculator.morale(1000, 100), 1e-9); // 3 * 0.1 + 0.3
         assertEquals(0.3, BattleCalculator.morale(1000, 0), 1e-9);
     }
 
