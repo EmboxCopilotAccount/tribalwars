@@ -2,6 +2,8 @@ package se.oscarwiklund.twlan2.backend.service;
 
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.BuildingRepository;
+import se.oscarwiklund.twlan2.backend.repo.MovementRepository;
+import se.oscarwiklund.twlan2.backend.repo.StationedTroopsRepository;
 import se.oscarwiklund.twlan2.backend.repo.TrainQueueItemRepository;
 import se.oscarwiklund.twlan2.backend.repo.UnitStockRepository;
 import org.springframework.stereotype.Service;
@@ -16,11 +18,16 @@ public class VillageService {
     private final BuildingRepository buildingRepository;
     private final UnitStockRepository unitStockRepository;
     private final TrainQueueItemRepository trainQueueItemRepository;
+    private final MovementRepository movementRepository;
+    private final StationedTroopsRepository stationedRepository;
     private final GameSettings settings;
 
     public VillageService(BuildingRepository buildingRepository, UnitStockRepository unitStockRepository,
-                           TrainQueueItemRepository trainQueueItemRepository, GameSettings settings) {
+                           TrainQueueItemRepository trainQueueItemRepository, MovementRepository movementRepository,
+                           StationedTroopsRepository stationedRepository, GameSettings settings) {
         this.settings = settings;
+        this.movementRepository = movementRepository;
+        this.stationedRepository = stationedRepository;
         this.buildingRepository = buildingRepository;
         this.unitStockRepository = unitStockRepository;
         this.trainQueueItemRepository = trainQueueItemRepository;
@@ -80,7 +87,8 @@ public class VillageService {
         return (int) Math.floor(BuildingType.farmCapacity(levelOf(village, BuildingType.FARM)) * BonusType.populationFactor(village));
     }
 
-    // Only the current level of standing buildings; pending build orders are excluded.
+    // Only the current level of standing buildings; pending build orders are excluded. Troops count wherever they are:
+    // at home, on the road (out or coming back) and stationed as support in other villages.
     public int populationUsed(Village village) {
         int used = 0;
         for (Building b : buildingRepository.findByVillage(village)) {
@@ -94,6 +102,14 @@ public class VillageService {
             if (item.isDecommission()) continue; // units being dismissed are still in the stock until they leave
             used += item.getType().popCost * (item.getTotalCount() - item.getProducedCount());
         }
+        used += popOf(movementRepository.sumUnitsAway(village, MovementType.RETURN));
+        used += popOf(stationedRepository.sumUnitsStationedAway(village));
         return used;
+    }
+
+    private static int popOf(List<Object[]> countsByType) {
+        int pop = 0;
+        for (Object[] row : countsByType) pop += ((UnitType) row[0]).popCost * ((Number) row[1]).intValue();
+        return pop;
     }
 }

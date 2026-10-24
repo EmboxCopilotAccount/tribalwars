@@ -9,12 +9,17 @@ import org.springframework.transaction.annotation.Transactional;
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.AccountRepository;
 import se.oscarwiklund.twlan2.backend.repo.BuildingRepository;
+import se.oscarwiklund.twlan2.backend.repo.MovementRepository;
+import se.oscarwiklund.twlan2.backend.repo.StationedTroopsRepository;
 import se.oscarwiklund.twlan2.backend.repo.UnitStockRepository;
 import se.oscarwiklund.twlan2.backend.service.BuildService;
 import se.oscarwiklund.twlan2.backend.service.TrainService;
 import se.oscarwiklund.twlan2.backend.service.VillageService;
 import se.oscarwiklund.twlan2.backend.service.WorldService;
 import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto;
+
+import java.time.Instant;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,12 +37,15 @@ class BuildAndPopulationTest {
     @Autowired TrainService train;
     @Autowired BuildService build;
     @Autowired GameFacade facade;
+    @Autowired MovementRepository movements;
+    @Autowired StationedTroopsRepository stationed;
 
+    World world;
     Village village;
 
     @BeforeEach
     void setUp() {
-        World world = worlds.createWorld("build-pop-test", 1);
+        world = worlds.createWorld("build-pop-test", 1);
         Account player = new Account();
         player.setUsername("buildpoptester");
         player.setPasswordHash("x");
@@ -117,5 +125,39 @@ class BuildAndPopulationTest {
         VillageStateDto.BuildQueueDto queued = facade.toDto(village).buildQueue().get(0);
         assertTrue(queued.popIncrease() > 0);
         assertEquals(BuildingType.BARRACKS.popIncrease(1), queued.popIncrease());
+    }
+
+    private void move(Village from, Village to, MovementType type, Map<UnitType, Integer> units) {
+        Movement m = new Movement();
+        m.setOriginVillage(from);
+        m.setTargetVillage(to);
+        m.setType(type);
+        m.getUnits().putAll(units);
+        m.setDepartedAt(Instant.now());
+        m.setArrivesAt(Instant.now().plusSeconds(3600));
+        movements.save(m);
+    }
+
+    @Test
+    void troopsAwayFromHomeStillTakeFarmSpace() {
+        Account other = new Account();
+        other.setUsername("buildpopneighbour");
+        other.setPasswordHash("x");
+        accounts.save(other);
+        Village neighbour = worlds.joinWorld(world, other);
+        int before = villageService.populationUsed(village);
+
+        move(village, neighbour, MovementType.ATTACK, Map.of(UnitType.AXE, 30));   // out on a command
+        move(neighbour, village, MovementType.RETURN, Map.of(UnitType.LIGHT, 5));  // on the way back home
+        StationedTroops support = new StationedTroops();
+        support.setOriginVillage(village);
+        support.setHostVillage(neighbour);
+        support.getUnits().put(UnitType.SPEAR, 10);                               // stationed as support
+        stationed.save(support);
+        move(neighbour, village, MovementType.ATTACK, Map.of(UnitType.AXE, 100)); // someone else's troops: no
+
+        int away = 30 * UnitType.AXE.popCost + 5 * UnitType.LIGHT.popCost + 10 * UnitType.SPEAR.popCost;
+        assertEquals(before + away, villageService.populationUsed(village));
+        assertEquals(before + away, facade.toDto(village).populationUsed());
     }
 }

@@ -53,7 +53,7 @@ public class NpcEconomy {
         public final EnumMap<UnitType, Integer> homeUnits = new EnumMap<>(UnitType.class);
         public List<BuildQueueItem> build = List.of();
         public List<TrainQueueItem> train = List.of();
-        int popNow;       // standing buildings + units + units in training (what TrainService counts)
+        int popNow;       // what TrainService counts: buildings, units at home, away and in training
         int popPending;   // farm room already promised to buildings in the queue
         // wood/clay/iron the village is saving for its next building; troops are not paid from it
         final double[] reserve = new double[3];
@@ -75,9 +75,7 @@ public class NpcEconomy {
         for (UnitStock u : stock.findByVillage(v)) s.homeUnits.merge(u.getType(), u.getCount(), Integer::sum);
         s.build = buildQueue.findByVillageOrderByPositionAsc(v);
         s.train = trainQueue.findByVillageOrderByPositionAsc(v);
-        for (var e : s.levels.entrySet()) s.popNow += e.getKey().popCost(e.getValue());
-        for (var e : s.homeUnits.entrySet()) s.popNow += e.getKey().popCost * e.getValue();
-        for (TrainQueueItem q : s.train) s.popNow += q.getType().popCost * (q.getTotalCount() - q.getProducedCount());
+        s.popNow = villageService.populationUsed(v);
         for (BuildQueueItem q : s.build) s.popPending += q.getType().popIncrease(q.getTargetLevel());
         return s;
     }
