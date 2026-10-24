@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 
-// World "leftVillagesGrow": a real account that hasn't logged in for that many real-world minutes loses its
+// World "leftVillagesGrow": a real account that hasn't been used for that many real-world minutes (lastLoginAt: a
+// login, or any request with its token, see AuthService.resolve) loses its
 // villages to the barbarians (user's chosen design, not a passive NPC-style build-up loop, since the original's
 // exact behaviour is compiled and not discoverable). 0/unset disables the sweep for that world.
 // NPC accounts follow their own, unrelated clock: NpcRetirement decides which ones ever stop playing and when;

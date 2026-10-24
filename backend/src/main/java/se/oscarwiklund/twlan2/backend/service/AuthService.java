@@ -79,10 +79,22 @@ public class AuthService {
         if (token != null) sessions.deleteById(token);
     }
 
-    @Transactional(readOnly = true)
+    // How often a request with a valid token refreshes the account's lastLoginAt.
+    static final long SEEN_EVERY_SECONDS = 60;
+
+    // Also counts as a visit: "Stay logged in" keeps the token for good, so without this lastLoginAt stayed at the
+    // last password login and AbandonmentService turned the villages of players who never log out barbarian.
+    @Transactional
     public Optional<Account> resolve(String token) {
         if (token == null || token.isBlank()) return Optional.empty();
-        return sessions.findById(token).flatMap(s -> accounts.findById(s.getAccountId()));
+        Optional<Account> account = sessions.findById(token).flatMap(s -> accounts.findById(s.getAccountId()));
+        account.ifPresent(a -> {
+            java.time.Instant now = java.time.Instant.now();
+            if (a.getLastLoginAt() == null || a.getLastLoginAt().isBefore(now.minusSeconds(SEEN_EVERY_SECONDS))) {
+                accounts.touchLastLogin(a.getId(), now);
+            }
+        });
+        return account;
     }
 
     private String newSession(Account account) {
