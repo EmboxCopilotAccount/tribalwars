@@ -585,9 +585,9 @@ function HideBody({ village, level }) {
 /* ------------------------------------------------------------------ wall */
 
 /* game/wall/index.php */
-function WallBody({ level }) {
-  const cur = wallStats(level);
-  const next = wallStats(level + 1);
+function WallBody({ village, level }) {
+  const cur = wallStats(level, village.basicDefense);
+  const next = wallStats(level + 1, village.basicDefense);
   return (
     <table className="vis">
       <tbody>
@@ -678,7 +678,7 @@ function BuildingPage({ village, id, onBuild, onCancelBuild, onFinishBuild, onRe
   else if (PIT_RES[id]) body = <PitBody village={village} id={id} level={level} />;
   else if (id === "storage") body = <StorageBody village={village} level={level} />;
   else if (id === "hide") body = <HideBody village={village} level={level} />;
-  else if (id === "wall") body = <WallBody level={level} />;
+  else if (id === "wall") body = <WallBody village={village} level={level} />;
   else if (id === "smith") body = <SmithBody village={village} onResearch={onResearch} onCancelResearch={onCancelResearch} />;
   else if (id === "statue") body = <StatueBody village={village} mode={statueMode} onTrain={onTrain} onCancelTrain={onCancelTrain} onRenamePaladin={onRenamePaladin} />;
   else if (id === "snob") body = <SnobBody village={village} mode={modeFromHash(id)} go={go} onTrain={onTrain} onCancelTrain={onCancelTrain} onMintCoin={onMintCoin} />;

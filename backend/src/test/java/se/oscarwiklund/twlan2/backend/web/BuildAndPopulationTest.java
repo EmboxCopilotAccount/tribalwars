@@ -16,6 +16,7 @@ import se.oscarwiklund.twlan2.backend.service.BuildService;
 import se.oscarwiklund.twlan2.backend.service.TrainService;
 import se.oscarwiklund.twlan2.backend.service.VillageService;
 import se.oscarwiklund.twlan2.backend.service.WorldService;
+import se.oscarwiklund.twlan2.backend.service.WorldSettings;
 import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto;
 
 import java.time.Instant;
@@ -159,5 +160,10 @@ class BuildAndPopulationTest {
         int away = 30 * UnitType.AXE.popCost + 5 * UnitType.LIGHT.popCost + 10 * UnitType.SPEAR.popCost;
         assertEquals(before + away, villageService.populationUsed(village));
         assertEquals(before + away, facade.toDto(village).populationUsed());
+    }
+
+    @Test
+    void wallScreenGetsTheBasicDefenceCombatAdds() {
+        assertEquals(WorldSettings.number(world, "basicDefense"), facade.toDto(village).basicDefense());
     }
 }

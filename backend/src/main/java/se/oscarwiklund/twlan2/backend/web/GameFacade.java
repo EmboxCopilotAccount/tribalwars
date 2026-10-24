@@ -201,6 +201,7 @@ public class GameFacade {
                 BuildingType.IRON_MINE.productionPerHour(villageService.levelOf(village, BuildingType.IRON_MINE)) * BonusType.productionFactor(village, BuildingType.IRON_MINE) * settings.speedOf(village),
                 buildings, buildQueueDtos, units, trainQueueDtos, unitCosts, outgoing, incoming,
                 settings.speedOf(village),
+                WorldSettings.number(village.getWorld(), "basicDefense"),
                 WorldSettings.number(village.getWorld(), "prodToSeconds"), WorldSettings.number(village.getWorld(), "prodToMinutes"),
                 settings.worldNameOf(village),
                 village.getWorld() == null ? null : village.getWorld().getId(),

@@ -344,9 +344,10 @@ export function confirmBox(message, onConfirm) {
   buttons.firstChild.focus();
 }
 
-/* Wall stats (world basicDefense 20; +3.7% troop strength per level, classic TW formula). */
-export function wallStats(level) {
-  return { basic: 20 * level, bonus: Math.round((Math.pow(1.037, level) - 1) * 100) };
+/* Wall stats as the battle counts them (BattleCalculator): the world's flat basic defence, whatever the level,
+   and +3.7% troop strength per level (classic TW formula). */
+export function wallStats(level, basicDefense = 20) {
+  return { basic: Math.round(basicDefense), bonus: Math.round((Math.pow(1.037, level) - 1) * 100) };
 }
 
 /* Hiding place capacity at a level (world config: 150 * 1.3335^(level-1)). */

@@ -26,6 +26,7 @@ public record VillageStateDto(
         List<MovementDto> outgoingMovements,
         List<MovementDto> incomingMovements,
         double worldSpeed,
+        double basicDefense, // free defence every village has on top of its troops (world setting)
         double prodToSeconds,
         double prodToMinutes,
         String worldName,
