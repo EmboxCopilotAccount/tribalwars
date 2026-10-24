@@ -155,8 +155,8 @@ function VillageItem({ v, village, from, onClick }) {
 }
 
 /* the "village_targets" popup (UI.AjaxPopup): the map's favorites or the recently used targets */
-function TargetsPopup({ kind, village, villages, rect, onPick, onClose }) {
-  const ids = kind === "favorites" ? favoriteIds() : recentTargets(village.worldId).map((e) => e.id);
+function TargetsPopup({ kind, history, village, villages, rect, onPick, onClose }) {
+  const ids = kind === "favorites" ? favoriteIds() : recentTargets(village.worldId, history).map((e) => e.id);
   const items = ids.map((id) => villages.find((v) => v.id === id)).filter(Boolean);
   return createPortal(
     <div className="popup_helper">
@@ -167,7 +167,7 @@ function TargetsPopup({ kind, village, villages, rect, onPick, onClose }) {
         </div>
         <div className="popup_content" style={{ maxHeight: 300, overflowY: "auto" }}>
           {items.length === 0 && (
-            <p className="grey">{kind === "favorites" ? "No favorites yet. Star villages on the map." : "You have not sent any troops yet."}</p>
+            <p className="grey">{kind === "favorites" ? "No favorites yet. Star villages on the map." : history === "market" ? "You have not sent any resources yet." : "You have not sent any troops yet."}</p>
           )}
           {items.map((v) => (
             <div key={v.id} className="target-select-autocomplete" style={{ position: "static", maxHeight: "none" }}>
@@ -181,7 +181,8 @@ function TargetsPopup({ kind, village, villages, rect, onPick, onClose }) {
   );
 }
 
-export function TargetField({ village, villages, type, setType, text, setText, confirmed, setConfirmed }) {
+/* `history` "market": the History popup lists where the market shipped to, and there is no "last attacked" button */
+export function TargetField({ village, villages, type, setType, text, setText, confirmed, setConfirmed, history }) {
   const boxRef = useRef(null);
   const [pos, setPos] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -303,7 +304,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
                 />
                 {confirmed && <VillageItem v={confirmed} village={village} from={village} onClick={(e) => { e.stopPropagation(); remove(); }} />}
               </div>
-              <a
+              {history !== "market" && <a
                 href="#"
                 className="target-quickbutton target-last-attacked"
                 title="Last attacked"
@@ -313,7 +314,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
                   const v = id != null && villages.find((x) => x.id === id);
                   if (v) confirm(v);
                 }}
-              />
+              />}
             </td>
           </tr>
           <tr>
@@ -331,6 +332,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
       {list && (
         <TargetsPopup
           kind={list.kind}
+          history={history}
           village={village}
           villages={villages}
           rect={list.rect}

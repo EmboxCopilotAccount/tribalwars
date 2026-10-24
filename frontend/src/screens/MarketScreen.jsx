@@ -13,6 +13,7 @@ import { levelOf } from "../lib/data";
 import { PreErrorBox, Timer } from "../lib/ui";
 import { fmtOnTime, fmtBuildTime, villageDisplayName, hashParts } from "../lib/military";
 import { TargetField } from "./military/PlaceParts";
+import { pushRecent } from "../lib/targets";
 
 export const RESOURCES = [
   ["WOOD", "wood", "Wood", "wood"],
@@ -169,6 +170,7 @@ function SendMode({ village, villages, market, go, presetId }) {
   const send = async () => {
     const c = confirm;
     if (await act(() => api.marketSend(c.target.id, c.wood, c.clay, c.iron))) {
+      pushRecent(village.worldId, c.target.id, false, "market");
       setConfirm(null);
       setAmounts({ WOOD: "", CLAY: "", IRON: "" });
       setText("");
@@ -238,7 +240,7 @@ function SendMode({ village, villages, market, go, presetId }) {
           </tbody>
         </table>
         <div style={{ overflow: "hidden" }}>
-          <TargetField village={village} villages={villages.filter((v) => v.ownerType !== "BARBARIAN")} type={type} setType={setType} text={text} setText={setText} confirmed={target} setConfirmed={setTarget} />
+          <TargetField village={village} villages={villages.filter((v) => v.ownerType !== "BARBARIAN")} type={type} setType={setType} text={text} setText={setText} confirmed={target} setConfirmed={setTarget} history="market" />
         </div>
         {ownTargets.length > 0 && (
           <p>
