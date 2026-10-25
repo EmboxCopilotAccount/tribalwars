@@ -306,6 +306,20 @@ public class GameFacade {
                 .toList();
     }
 
+    public static final int MAX_DELETE = 1000;
+
+    // Deletes the player's own reports in this world (ids of other players' reports are ignored); returns how many.
+    @Transactional
+    public int deleteReports(List<Long> ids) {
+        Account me = AccountContext.get();
+        if (me == null) throw new AuthService.AuthException("Please log in.");
+        if (ids == null || ids.isEmpty()) return 0;
+        if (ids.size() > MAX_DELETE) throw new IllegalArgumentException("Delete at most " + MAX_DELETE + " reports at a time.");
+        List<CombatReport> mine = combatReportRepository.findByIdInAndWorldIdAndAccountId(ids, currentWorld().getId(), me.getId());
+        combatReportRepository.deleteAll(mine);
+        return mine.size();
+    }
+
     private ReportDto toReportDto(CombatReport r) {
         Map<String, Integer> d = r.getDetail();
         Map<String, Integer> attackerUnits = section(d, "att:");

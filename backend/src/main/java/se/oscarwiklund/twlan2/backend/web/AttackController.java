@@ -97,4 +97,13 @@ public class AttackController {
     public List<ReportDto> reports() {
         return gameFacade.listReports();
     }
+
+    public record DeleteReportsRequest(List<Long> ids) {}
+    public record DeleteReportsResult(int deleted) {}
+
+    // Deletes the logged-in player's own reports; ids of reports that aren't theirs are ignored.
+    @PostMapping("/api/reports/delete")
+    public DeleteReportsResult deleteReports(@RequestBody DeleteReportsRequest request) {
+        return new DeleteReportsResult(gameFacade.deleteReports(request.ids()));
+    }
 }

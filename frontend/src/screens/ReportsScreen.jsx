@@ -30,7 +30,9 @@ export const REPORT_MODES = [
   ["groups", "Ordner"],
 ];
 
-/* Reports can't be deleted server-side (no backend endpoint); the delete/read state is kept per browser. */
+/* Deleting goes to the server (/api/reports/delete). Before that existed, deleted reports were only hidden in the
+   browser (LS_DELETED, not per world): those still hide, and are deleted on the server once their world's list shows
+   them. Which reports were read stays per browser. */
 const LS_DELETED = "twlan2.reports.deleted";
 const LS_READ = "twlan2.reports.read";
 const LS_HIDDEN_DOTS = "twlan2.reports.hiddenDots"; // dot colours unticked in the list's "Show:" filter
@@ -688,7 +690,7 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   );
 }
 
-export function ReportsScreen({ reports = [], mode = "all", go }) {
+export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged }) {
   const villages = useVillages();
   const popup = useUnitPopup();
   const [deleted, setDeleted] = useState(() => loadSet(LS_DELETED));
@@ -710,12 +712,32 @@ export function ReportsScreen({ reports = [], mode = "all", go }) {
     }
   }, [viewed, readIds]);
 
+  const [deleteError, setDeleteError] = useState(null);
+  // hidden at once, deleted on the server, then the list is fetched again; shown again if the server refused
   const onDelete = (ids) => {
-    const next = new Set(deleted);
-    ids.forEach((i) => next.add(i));
-    setDeleted(next);
-    saveSet(LS_DELETED, next);
+    setDeleteError(null);
+    setDeleted((d) => new Set([...d, ...ids]));
+    api.deleteReports(ids)
+      .then(() => onReportsChanged?.())
+      .catch((err) => {
+        setDeleted((d) => new Set([...d].filter((i) => !ids.includes(i))));
+        setDeleteError(err?.message ?? "The reports could not be deleted.");
+      });
   };
+  // reports only hidden by an older version of this page: delete the ones of this world's list on the server
+  useEffect(() => {
+    const old = loadSet(LS_DELETED);
+    const here = reports.filter((r) => old.has(r.id)).map((r) => r.id).slice(0, 1000);
+    if (here.length === 0) return;
+    api.deleteReports(here)
+      .then(() => {
+        const left = loadSet(LS_DELETED);
+        here.forEach((i) => left.delete(i));
+        saveSet(LS_DELETED, left);
+        onReportsChanged?.();
+      })
+      .catch(() => { /* still hidden; tried again next time */ });
+  }, [reports, onReportsChanged]);
 
   // tabs of the original all lead to the same "all" list
   const nav = (e, target) => {
@@ -728,6 +750,7 @@ export function ReportsScreen({ reports = [], mode = "all", go }) {
   return (
     <>
       <h2>Reports</h2>
+      {deleteError && <div className="error_box">{deleteError}</div>}
 
       <table className="no_spacing" width="100%">
         <tbody>

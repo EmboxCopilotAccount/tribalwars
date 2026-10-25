@@ -109,6 +109,7 @@ export const api = {
   getVillage: () => request("/village"),
   getVillages: () => request("/villages"),
   getReports: () => request("/reports"),
+  deleteReports: (ids) => request("/reports/delete", { method: "POST", body: JSON.stringify({ ids }) }),
   renameVillage: (name) => request("/village/name", { method: "PUT", body: JSON.stringify({ name }) }),
   build: (type) => request("/village/build", { method: "POST", body: JSON.stringify({ type }) }),
   demolish: (type) => request("/village/demolish", { method: "POST", body: JSON.stringify({ type }) }),

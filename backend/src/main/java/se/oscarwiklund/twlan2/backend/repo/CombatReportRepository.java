@@ -11,4 +11,6 @@ public interface CombatReportRepository extends JpaRepository<CombatReport, Long
     List<CombatReport> findByWorldIdIsNull();
     List<CombatReport> findByWorldIdAndAccountIdOrderByOccurredAtDesc(Long worldId, Long accountId);
     List<CombatReport> findByAccountIdIsNull();
+    // only the given account's reports in that world: what a player may delete
+    List<CombatReport> findByIdInAndWorldIdAndAccountId(java.util.Collection<Long> ids, Long worldId, Long accountId);
 }

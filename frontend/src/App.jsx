@@ -426,7 +426,7 @@ export default function App() {
   const [screenName, mode] = screen.split(":");
   let content;
   if (screenName === "map") content = <MapScreen village={village} villages={villages} go={go} focusAt={mode} onAttack={handleAttack} />;
-  else if (screenName === "report") content = <ReportsScreen reports={reports} mode={mode ?? "all"} go={go} />;
+  else if (screenName === "report") content = <ReportsScreen reports={reports} mode={mode ?? "all"} go={go} onReportsChanged={refreshReports} />;
   else if (screenName === "overview_villages")
     content = <OverviewVillagesScreen village={village} mode={mode ?? "combined"} go={go} onRename={handleRename} onSelectVillage={selectVillage} groups={villageGroups} />;
   else if (screenName === "ranking")
