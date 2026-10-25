@@ -28,6 +28,7 @@ import { favoriteIds, lastAttacked, recentTargets } from "../../lib/targets";
 import { simulate } from "./sim";
 import { clearSimPreset, peekSimPreset } from "../../lib/simPreset";
 import { templateCounts, useTroopTemplates } from "../../lib/troopTemplates";
+import { VillageContext } from "../VillageContext";
 
 export const PLACE_MODES = [
   ["command", "Commands"],
@@ -678,7 +679,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
                 <a href="#" onClick={(e) => navigateTo(e, "info_village:" + target.id, go)}>
                   {`${target.name} (${target.x}|${target.y}) ${continentOf(target)}`}
                 </a>{" "}
-                <a className="ctx" href="#" onClick={(e) => e.preventDefault()} />
+                <VillageContext village={target} go={go} />
               </span>
             </td>
           </tr>

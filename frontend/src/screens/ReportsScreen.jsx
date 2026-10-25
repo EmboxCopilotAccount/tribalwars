@@ -19,6 +19,7 @@ import { isBattle, reportLoot, scoutsOnly } from "../lib/farm";
 import { setSimPreset, simForm } from "../lib/simPreset";
 import { setCommandPreset } from "../lib/commandPreset";
 import { reportBBCode } from "../lib/reportExport";
+import { VillageContext } from "./VillageContext";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -778,7 +779,7 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                             <td>
                               <span className="village_anchor contexted" data-player="2" data-id={from?.id ?? ""}>
                                 <a href="#" onClick={(e) => navigateTo(e, from?.id ? "info_village:" + from.id : "info_village", go)}>{fromName}</a>{" "}
-                                <a className="ctx" href="#" onClick={(e) => e.preventDefault()} />
+                                <VillageContext village={from.live} currentId={currentVillageId} go={go} />
                               </span>
                             </td>
                           </tr>
@@ -802,7 +803,7 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                             <td>
                               <span className="village_anchor contexted" data-player="0" data-id={toSide.id ?? ""}>
                                 <a href="#" onClick={(e) => navigateTo(e, toSide.id ? "info_village:" + toSide.id : "info_village", go)}>{toName}</a>{" "}
-                                <a className="ctx" href="#" onClick={(e) => e.preventDefault()} />
+                                <VillageContext village={toSide.live} currentId={currentVillageId} go={go} />
                               </span>
                             </td>
                           </tr>
