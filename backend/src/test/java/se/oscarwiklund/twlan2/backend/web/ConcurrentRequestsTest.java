@@ -97,4 +97,15 @@ class ConcurrentRequestsTest {
             }
         }));
     }
+
+    @Test
+    void busyAccountRowDoesNotFailTheRequest() throws InterruptedException {
+        AuthService.Login login = auth.register("busy" + System.nanoTime() % 100000, "secret1");
+        Long id = login.account().getId();
+        new TransactionTemplate(txManager).executeWithoutResult(st ->
+                accounts.touchLastLogin(id, Instant.now().minus(Duration.ofHours(1)))); // due for a refresh
+
+        whileLocked(tx -> accounts.touchLastLogin(id, Instant.now().minus(Duration.ofHours(2))),
+                () -> assertTrue(auth.resolve(login.token()).isPresent()));
+    }
 }

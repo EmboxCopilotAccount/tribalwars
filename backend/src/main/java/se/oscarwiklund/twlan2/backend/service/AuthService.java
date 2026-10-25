@@ -4,8 +4,13 @@ import se.oscarwiklund.twlan2.backend.domain.Account;
 import se.oscarwiklund.twlan2.backend.domain.AuthSession;
 import se.oscarwiklund.twlan2.backend.repo.AccountRepository;
 import se.oscarwiklund.twlan2.backend.repo.AuthSessionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.security.SecureRandom;
 import java.util.HexFormat;
@@ -27,11 +32,16 @@ public class AuthService {
     private final AccountRepository accounts;
     private final AuthSessionRepository sessions;
     private final WorldService worldService;
+    private final TransactionTemplate touchTx;
 
-    public AuthService(AccountRepository accounts, AuthSessionRepository sessions, WorldService worldService) {
+    private static final Logger LOG = LoggerFactory.getLogger(AuthService.class);
+
+    public AuthService(AccountRepository accounts, AuthSessionRepository sessions, WorldService worldService,
+                       PlatformTransactionManager txManager) {
         this.accounts = accounts;
         this.sessions = sessions;
         this.worldService = worldService;
+        this.touchTx = new TransactionTemplate(txManager); // called outside any transaction (WebConfig), so its own short one
     }
 
     public record Login(Account account, String token) {}
@@ -84,14 +94,20 @@ public class AuthService {
 
     // Also counts as a visit: "Stay logged in" keeps the token for good, so without this lastLoginAt stayed at the
     // last password login and AbandonmentService turned the villages of players who never log out barbarian.
-    @Transactional
+    // Runs on every request, so it holds no transaction of its own: the visit is written in a separate short one and is
+    // best-effort. When another transaction holds the account row (a scheduler sweep, or the same touch from another
+    // tab), H2's lock timeout used to fail the whole request with a 500; now the touch is skipped and retried a request later.
     public Optional<Account> resolve(String token) {
         if (token == null || token.isBlank()) return Optional.empty();
         Optional<Account> account = sessions.findById(token).flatMap(s -> accounts.findById(s.getAccountId()));
         account.ifPresent(a -> {
             java.time.Instant now = java.time.Instant.now();
             if (a.getLastLoginAt() == null || a.getLastLoginAt().isBefore(now.minusSeconds(SEEN_EVERY_SECONDS))) {
-                accounts.touchLastLogin(a.getId(), now);
+                try {
+                    touchTx.executeWithoutResult(st -> accounts.touchLastLogin(a.getId(), now));
+                } catch (DataAccessException e) {
+                    LOG.debug("lastLoginAt of account {} not refreshed this time: {}", a.getId(), e.getClass().getSimpleName());
+                }
             }
         });
         return account;
