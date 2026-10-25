@@ -124,11 +124,13 @@ public class GameFacade {
         return (int) Math.ceil(cost * factor - 1e-9);
     }
 
-    // must run in a transaction: open-in-view is off, and a movement's units load lazily
-    @Transactional
+    // must run in a transaction: open-in-view is off, and a movement's units load lazily.
+    // Read-only and nothing saved: the settlement below is only for display (every write path settles first). Saving it
+    // locked this village and then every other own village (ownVillages), so two tabs on different villages locked
+    // the same rows in opposite order and H2 rolled one back as a deadlock victim (a 500, even after a successful order).
+    @Transactional(readOnly = true)
     public VillageStateDto toDto(Village village) {
         villageService.settleResources(village);
-        villageRepository.save(village);
 
         int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
         double hqTimeFactor = WorldSettings.number(village.getWorld(), "buildMainFactor");
@@ -262,12 +264,8 @@ public class GameFacade {
         for (Village v : villageRepository.findByWorldAndOwner(current.getWorld(), current.getOwner())) {
             int points = 0;
             for (Building b : buildingRepository.findByVillage(v)) points += b.getType().points(b.getLevel());
-            if (v.getId().equals(current.getId())) {
-                // the current village was settled just above; the others are shown as of their last settlement plus accrued production
-            } else {
-                villageService.settleResources(v);
-                villageRepository.save(v);
-            }
+            // nothing is saved (see toDto), so this list's own copy of the current village needs settling too
+            villageService.settleResources(v);
             Map<String, Integer> home = new LinkedHashMap<>();
             for (UnitStock stock : unitStockRepository.findByVillage(v)) home.put(stock.getType().name(), stock.getCount());
             out.add(new OwnVillageDto(v.getId(), v.getName(), v.getX(), v.getY(), points, v.getWood(), v.getClay(), v.getIron(),
@@ -302,13 +300,12 @@ public class GameFacade {
     }
 
     // Overviews: a row for each of the player's villages (see OverviewDto)
-    @Transactional
+    @Transactional(readOnly = true) // display only, see toDto
     public List<OverviewDto> villageOverview() {
         Village current = playerHomeVillage();
         List<OverviewDto> out = new java.util.ArrayList<>();
         for (Village v : villageRepository.findByWorldAndOwner(current.getWorld(), current.getOwner())) {
             villageService.settleResources(v);
-            villageRepository.save(v);
             int points = 0;
             Map<String, Integer> levels = new LinkedHashMap<>();
             for (BuildingType type : BuildingType.values()) levels.put(type.name(), 0);
