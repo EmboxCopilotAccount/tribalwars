@@ -1,7 +1,7 @@
 // screen=report — mirrors templates/twlan/controllers/game/report/{index,overview,view_attack}.php.
 // The tabs attacks, Defenses, support, trade and other filter the list; the rest still show all reports.
 // Single reports: hash "report:all:<id>"  (original: mode=all&view=<id>).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { PLAYER_NAME } from "../lib/data";
 import { buildingTypeName } from "../lib/buildings";
@@ -18,6 +18,7 @@ import { useUnitPopup } from "./military/UnitPopup";
 import { isBattle, reportLoot, scoutsOnly } from "../lib/farm";
 import { setSimPreset, simForm } from "../lib/simPreset";
 import { setCommandPreset } from "../lib/commandPreset";
+import { reportBBCode } from "../lib/reportExport";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -627,13 +628,17 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
     if (villageId != null && villageId !== currentVillageId) onSelectVillage?.(villageId);
     go(e, "place:" + enemy.id);
   };
-  const exportCode = useMemo(() => {
-    try {
-      return btoa(JSON.stringify(r));
-    } catch {
-      return "";
-    }
-  }, [r]);
+  const [exporting, setExporting] = useState(false);
+  const winner = won ? attackerName(r) : r.defenderPlayer ?? to?.ownerName ?? "Defender";
+  const exportCode = exporting
+    ? reportBBCode(r, {
+        subject, time: fmtOnTime(r.occurredAt), winner, luck, showDefenderTroops, ids: toIdMap,
+        attacker: r.attackerPlayer ?? (from.live?.ownerType === "PLAYER" ? from.live.ownerName : null),
+        defender: r.defenderPlayer ?? (to?.ownerType === "PLAYER" ? to.ownerName : null),
+        fromLabel: fromName, toLabel: toName, beforeA, lossesA, beforeD, lossesD,
+        loot: won && !scoutsOnly(r) ? { ...haul, max } : null,
+      })
+    : "";
 
   return (
     <>
@@ -666,10 +671,16 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                         Delete
                       </a>
                     </td>
-                    <td align="center" width="20%" style={{ display: "none" }}>
-                      {/* TODO */}
-                      <a href="#" onClick={(e) => e.preventDefault()}>
-                        <span className="">Exportieren</span>
+                    <td align="center" width="20%">
+                      <a
+                        href="#"
+                        id="report_export"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setExporting((x) => !x);
+                        }}
+                      >
+                        Export
                       </a>
                     </td>
                     <td align="center" width="20%">
@@ -710,7 +721,7 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                   </tr>
                   <tr>
                     <td colSpan="2" valign="top" height="160" style={{ border: "solid 1px black", padding: 4 }}>
-                      <h3>{`${won ? attackerName(r) : r.defenderPlayer ?? to?.ownerName ?? "Defender"} has won`}</h3>
+                      <h3>{`${winner} has won`}</h3>
                       <div className="report_image image_attack_won">
                         <div className="report_transparent_overlay">
                           <h4>Attackerluck</h4>
@@ -901,19 +912,29 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
           </tr>
         </tbody>
       </table>
-      {/* TODO Export Report + Quickedit below */}
-      <textarea
-        cols="55"
-        rows="7"
-        onClick={(e) => {
-          e.target.focus();
-          e.target.select();
-        }}
-        readOnly
-        id="report_export_code"
-        style={{ display: "none" }}
-        value={`[spoiler][report_export]${exportCode}[/report_export][/spoiler]`}
-      />
+      {exporting && (
+        <table className="vis" width="470" id="report_export_box">
+          <tbody>
+            <tr>
+              <th>Export as BB code</th>
+            </tr>
+            <tr>
+              <td>
+                <p style={{ margin: "2px 0 4px" }}>Copy this into a forum post, tribe mail or message to show the report there.</p>
+                <textarea
+                  cols="55"
+                  rows="12"
+                  style={{ width: "98%" }}
+                  onClick={(e) => e.target.select()}
+                  readOnly
+                  id="report_export_code"
+                  value={exportCode}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
     </>
   );
 }
