@@ -158,7 +158,7 @@ function DotFilter({ hidden, onToggle }) {
   );
 }
 
-function ReportList({ reports: all, villages, go, readIds, onDelete }) {
+function ReportList({ reports: all, mode, villages, go, readIds, onDelete }) {
   const [hidden, setHidden] = useState(() => loadSet(LS_HIDDEN_DOTS));
   const toggleDot = (color) => {
     const next = new Set(hidden);
@@ -227,7 +227,7 @@ function ReportList({ reports: all, villages, go, readIds, onDelete }) {
                     <img src={`/graphic/dots/${dotColor(r)}.png`} className="" />{" "}
                     <span className="quickedit" data-id={r.id}>
                       <span className="quickedit-content">
-                        <a href="#" onClick={(e) => go(e, `report:all:${r.id}`)}>
+                        <a href="#" onClick={(e) => go(e, `report:${mode}:${r.id}`)}>
                           <span className="quickedit-label">
                             {reportSubject(r, fromName, toName)}
                           </span>
@@ -420,27 +420,43 @@ function SpyInfo({ spy, popup }) {
   );
 }
 
-// "Delete" and "next report" above a single report
-function ReportActions({ r, next, go, onDelete }) {
+// Newer / older report of the list the report was opened from (the current tab), newest first like the list
+function ReportStep({ r, reports, mode, go, dir }) {
+  const idx = reports.findIndex((x) => x.id === r.id);
+  const to = idx < 0 ? null : reports[idx + dir];
+  const newer = dir < 0;
+  const label = newer ? "Newer report" : "Older report";
+  const img = <img src={`/graphic/arrow_${newer ? "left" : "right"}.png`} style={{ verticalAlign: -2 }} alt="" />;
+  if (!to) return <span className="grey" id={newer ? "report-prev" : "report-next"}>{newer ? <>{img} {label}</> : <>{label} {img}</>}</span>;
+  return (
+    <a href="#" id={newer ? "report-prev" : "report-next"} onClick={(e) => go(e, `report:${mode}:${to.id}`)}>
+      {newer ? <>{img} {label}</> : <>{label} {img}</>}
+    </a>
+  );
+}
+
+// "Delete" and newer / older report above a single report
+function ReportActions({ r, reports, mode, go, onDelete }) {
   return (
     <table align="center" className="vis" width="100%" style={{ marginTop: -2 }}>
       <tbody>
         <tr>
-          <td align="center" width="50%">
+          <td align="center" width="33%">
+            <ReportStep r={r} reports={reports} mode={mode} go={go} dir={-1} />
+          </td>
+          <td align="center" width="34%">
             <a
               href="#"
               onClick={(e) => {
                 onDelete([r.id]);
-                go(e, "report:all");
+                go(e, "report:" + mode);
               }}
             >
               Delete
             </a>
           </td>
-          <td align="center" width="50%">
-            <a href="#" id="report-next" onClick={(e) => go(e, `report:all:${next.id}`)}>
-              <img src="/graphic/arrow_up.png" style={{ verticalAlign: -2 }} alt="" />
-            </a>
+          <td align="center" width="33%">
+            <ReportStep r={r} reports={reports} mode={mode} go={go} dir={1} />
           </td>
         </tr>
       </tbody>
@@ -474,11 +490,9 @@ function Resources({ wood, clay, iron }) {
 }
 
 // Support arriving / going home and merchants delivering: who, from where to where, and what
-function OtherReportView({ report: r, reports, villages, go, popup, onDelete }) {
+function OtherReportView({ report: r, reports, mode, villages, go, popup, onDelete }) {
   const from = reportVillage(r, "attacker", villages);
   const to = reportVillage(r, "defender", villages);
-  const idx = reports.findIndex((x) => x.id === r.id);
-  const next = reports[idx + 1] ?? r;
   const trade = r.kind === "TRADE";
   const units = toIdMap(r.attackerUnits);
   const back = r.tradeBack ?? {};
@@ -488,7 +502,7 @@ function OtherReportView({ report: r, reports, villages, go, popup, onDelete }) 
       <tbody>
         <tr>
           <td className="nopad">
-            <ReportActions r={r} next={next} go={go} onDelete={onDelete} />
+            <ReportActions r={r} reports={reports} mode={mode} go={go} onDelete={onDelete} />
             <table className="vis" width="100%">
               <tbody>
                 <tr>
@@ -575,7 +589,7 @@ function OtherReportView({ report: r, reports, villages, go, popup, onDelete }) 
   );
 }
 
-function ReportView({ report: r, reports, villages, go, popup, onDelete, onSelectVillage, currentVillageId }) {
+function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, onSelectVillage, currentVillageId }) {
   const from = reportVillage(r, "attacker", villages);
   const toSide = reportVillage(r, "defender", villages);
   const to = toSide.live;
@@ -597,8 +611,6 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete, onSelec
   const loot = { wood: haul.wood, stone: haul.clay, iron: haul.iron };
   const used = haul.total;
   const max = r.lootCapacity ?? used;
-  const idx = reports.findIndex((x) => x.id === r.id);
-  const next = reports[idx + 1] ?? r;
   const subject = `${attackerName(r)} (${fromName}) attacks ${toName}`;
   // the battle as it was fought (luck, morale, night bonus, wall), so the simulator gives the report's result;
   // the defenders only when the report shows them
@@ -641,11 +653,14 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete, onSelec
                       <a href="#" onClick={(e) => e.preventDefault()}>Verschieben</a>
                     </td>
                     <td align="center" width="20%">
+                      <ReportStep r={r} reports={reports} mode={mode} go={go} dir={-1} />
+                    </td>
+                    <td align="center" width="20%">
                       <a
                         href="#"
                         onClick={(e) => {
                           onDelete([r.id]);
-                          go(e, "report:all");
+                          go(e, "report:" + mode);
                         }}
                       >
                         Delete
@@ -658,11 +673,8 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete, onSelec
                       </a>
                     </td>
                     <td align="center" width="20%">
-                      <a href="#" id="report-next" className="" onClick={(e) => go(e, `report:all:${next.id}`)}>
-                        <img src="/graphic/arrow_up.png" style={{ verticalAlign: -2 }} alt="" className="" />
-                      </a>
+                      <ReportStep r={r} reports={reports} mode={mode} go={go} dir={1} />
                     </td>
-                    <td align="center" width="20%" />
                   </tr>
                   <tr className="move_list" style={{ display: "none" }}>
                     {/* TODO */}
@@ -988,11 +1000,11 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
             </td>
             <td valign="top" width="100%">
               {viewed && !isBattle(viewed) ? (
-                <OtherReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
+                <OtherReportView report={viewed} reports={visible} mode={mode} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
               ) : viewed ? (
-                <ReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} onSelectVillage={onSelectVillage} currentVillageId={currentVillageId} />
+                <ReportView report={viewed} reports={visible} mode={mode} villages={villages} go={nav} popup={popup} onDelete={onDelete} onSelectVillage={onSelectVillage} currentVillageId={currentVillageId} />
               ) : (
-                <ReportList reports={visible} villages={villages} go={nav} readIds={readIds} onDelete={onDelete} />
+                <ReportList reports={visible} mode={mode} villages={villages} go={nav} readIds={readIds} onDelete={onDelete} />
               )}
             </td>
           </tr>
