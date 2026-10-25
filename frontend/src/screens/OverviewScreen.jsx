@@ -407,17 +407,32 @@ function Prod({ village }) {
   );
 }
 
+// Every unit in the village, support included (like the original); the support stationed here (tribe-mates' or from the
+// player's other villages) follows in brackets and leads to the rally point's Troops page, where it can be sent back.
 function Units({ village, go }) {
+  const support = {};
+  for (const army of village.stationed ?? []) {
+    for (const [type, n] of Object.entries(army.units ?? {})) support[type] = (support[type] ?? 0) + n;
+  }
   return (
     <table className="vis" width="100%">
       <tbody>
         {Object.entries(UNITS)
-          .filter(([type]) => (village.units[type] ?? 0) > 0)
+          .filter(([type]) => (village.units[type] ?? 0) > 0 || (support[type] ?? 0) > 0)
           .map(([type, u]) => (
             <tr key={type}>
               <td>
                 <img src={`/graphic/unit/unit_${u.id}.png`} alt="" />
-                <strong>{village.units[type]}</strong>
+                <strong>{(village.units[type] ?? 0) + (support[type] ?? 0)}</strong>
+                {support[type] > 0 && (
+                  <>
+                    {" "}
+                    <a href="#" title={`${village.units[type] ?? 0} own, ${support[type]} support from other villages`}
+                      onClick={(e) => go(e, "place:units")}>
+                      ({support[type]})
+                    </a>
+                  </>
+                )}
                 {" " + u.name}
               </td>
             </tr>
