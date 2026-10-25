@@ -19,6 +19,7 @@ import {
   TYPE_TO_ID,
   ID_TO_TYPE,
   unitsAtHome,
+  morale,
 } from "../../lib/military";
 import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
@@ -947,8 +948,30 @@ function SimArmyRows({ label, army }) {
   );
 }
 
+// "» Morale calculation": the morale an attack fights with, from both players' points (BattleCalculator.morale)
+function MoraleCalc({ village, onUse }) {
+  const own = (village?.myVillages ?? []).reduce((sum, v) => sum + (v.points ?? 0), 0);
+  const [att, setAtt] = useState(String(own || ""));
+  const [def, setDef] = useState("");
+  if (village && !village.moraleOn) return <span id="morale_calc">Morale is off in this world: every attack fights at 100%.</span>;
+  const value = morale(Number(att) || 0, Number(def) || 0);
+  return (
+    <span id="morale_calc">
+      <label>
+        Your points <input id="morale_att_points" type="text" style={{ width: 60 }} value={att} onChange={(e) => setAtt(e.target.value)} />
+      </label>{" "}
+      <label>
+        Defender's points <input id="morale_def_points" type="text" style={{ width: 60 }} value={def} onChange={(e) => setDef(e.target.value)} />
+      </label>{" "}
+      = <b>{value}%</b>{" "}
+      <input type="button" className="btn" value="Use" onClick={() => onUse(String(value))} />
+    </span>
+  );
+}
+
 export function SimMode({ popup, village }) {
   const [f, setF] = useState({ moral: "100", luck: "0" });
+  const [moraleCalc, setMoraleCalc] = useState(false);
   const [result, setResult] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const resetSide = (prefix) =>
@@ -1168,9 +1191,28 @@ export function SimMode({ popup, village }) {
 
               <td colSpan="2">
                 <input id="moral" name="moral" style={{ width: 50 }} type="text" value={f.moral} onChange={(e) => set("moral", e.target.value)} />%{" "}
-                <a href="#" onClick={(e) => e.preventDefault()}>
+                <a
+                  href="#"
+                  id="morale_calc_link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMoraleCalc((open) => !open);
+                  }}
+                >
                   » Morale calculation
                 </a>
+                {moraleCalc && (
+                  <>
+                    <br />
+                    <MoraleCalc
+                      village={village}
+                      onUse={(v) => {
+                        set("moral", v);
+                        setMoraleCalc(false);
+                      }}
+                    />
+                  </>
+                )}
               </td>
             </tr>
 
