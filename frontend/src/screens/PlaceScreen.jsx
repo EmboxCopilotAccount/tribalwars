@@ -13,7 +13,7 @@ import { useUnitPopup } from "./military/UnitPopup";
 
 const MODE_IDS = ["command", "secrets", "units", "sim", "templates", "farm"];
 
-export function PlaceScreen({ village, villages = [], reports = [], onAttack, onSupport, onWithdraw, onSendBack, onCancelCommand, busy, go }) {
+export function PlaceScreen({ village, villages = [], reports = [], onAttack, onSupport, onWithdraw, onSendBack, onCancelCommand, onRenameCommand, busy, go }) {
   const [parts, navigate] = useHashNav("place", go);
   const now = useNowTick();
   const popup = useUnitPopup();
@@ -100,7 +100,8 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
 
   const durationSeconds = (c) => travelSeconds(village, c.target, Object.keys(c.units), village.travelSpeed);
 
-  const send = async (catapultTarget) => {
+  // label: the name typed on the confirm page (null = the default one)
+  const send = async (catapultTarget, label) => {
     const units = {};
     for (const [id, n] of Object.entries(confirm.units)) units[ID_TO_TYPE[id]] = n;
     const target = confirm.target;
@@ -110,7 +111,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     setText("");
     setConfirmedTarget(null);
     pushRecent(village.worldId, target.id, isAttack);
-    await (isAttack ? onAttack(target.id, units, catapultTarget || undefined) : onSupport(target.id, units));
+    await (isAttack ? onAttack(target.id, units, catapultTarget || undefined, label || undefined) : onSupport(target.id, units, label || undefined));
   };
 
   const errorBox = error && <div className="error_box">{error}</div>;
@@ -151,6 +152,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
         popup={popup}
         onSubmit={submitCommand}
         onCancelCommand={onCancelCommand}
+        onRenameCommand={onRenameCommand}
         target={
           <TargetField
             village={village}

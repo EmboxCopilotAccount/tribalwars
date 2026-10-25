@@ -46,6 +46,18 @@ public class Movement {
     @Enumerated(EnumType.STRING)
     private BuildingType catapultTarget;
 
+    // the command's name as its sender (label) and the village it heads for (targetLabel) see it in their lists; null = the
+    // default ("Attack on ..."). Kept apart so an attacker's name never reaches the defender.
+    @Column(length = 60)
+    private String label;
+    @Column(length = 60)
+    private String targetLabel;
+
+    public String getLabel() { return label; }
+    public void setLabel(String label) { this.label = label; }
+    public String getTargetLabel() { return targetLabel; }
+    public void setTargetLabel(String targetLabel) { this.targetLabel = targetLabel; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

@@ -288,12 +288,12 @@ public class GameFacade {
                         // what an enemy sends is not shown, only that it is coming
                         ? new MovementDto(m.getId(), "INCOMING_ATTACK", m.getOriginVillage().getName(), m.getArrivesAt(), Map.of(),
                                 m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
-                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null)
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null, m.getTargetLabel())
                         : new MovementDto(m.getId(), m.getType() == MovementType.RETURN ? "RETURNING" : "SUPPORT_IN",
                                 m.getOriginVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
                                 m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(),
                                 m.getCarriedWood(), m.getCarriedClay(), m.getCarriedIron(),
-                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null))
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null, m.getTargetLabel()))
                 .toList();
     }
 
@@ -364,7 +364,7 @@ public class GameFacade {
         return new MovementDto(m.getId(), m.getType() == MovementType.SUPPORT ? "SUPPORTING" : "ATTACKING", m.getTargetVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
                 m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
                 m.getTargetVillage().getX(), m.getTargetVillage().getY(),
-                MovementService.cancelUntil(m, settings.speedOf(m.getOriginVillage())));
+                MovementService.cancelUntil(m, settings.speedOf(m.getOriginVillage())), m.getLabel());
     }
 
     @Transactional(readOnly = true)

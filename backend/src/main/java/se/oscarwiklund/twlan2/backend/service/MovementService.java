@@ -201,6 +201,43 @@ public class MovementService {
 
     // The sender calls a command off: the troops turn round where they are and walk home as long as they have
     // walked so far. Only within cancelSeconds of sending.
+    public static final int LABEL_MAX = 60;
+
+    /** A command name as typed -> what is stored: trimmed, no control characters, at most LABEL_MAX; blank = null. */
+    public static String cleanLabel(String raw) {
+        if (raw == null) return null;
+        String s = raw.replaceAll("\\p{Cntrl}", " ").strip();
+        if (s.isEmpty()) return null;
+        return s.length() > LABEL_MAX ? s.substring(0, LABEL_MAX).strip() : s;
+    }
+
+    /**
+     * Names a command in the actor's list: an own attack or support on its way (incoming = false), or a command heading
+     * for one of the actor's villages (incoming = true). Each side's name is its own.
+     */
+    @Transactional
+    public Movement rename(Account actor, Long movementId, boolean incoming, String label) {
+        Movement m = movementRepository.findById(movementId).orElseThrow(() -> new MovementException("This command no longer exists"));
+        Village side = incoming ? m.getTargetVillage() : m.getOriginVillage();
+        if (actor == null || side == null || side.getOwner() == null || !side.getOwner().getId().equals(actor.getId())) {
+            throw new MovementException("This is not your command");
+        }
+        if (!incoming && m.getType() != MovementType.ATTACK && m.getType() != MovementType.SUPPORT) {
+            throw new MovementException("Only attacks and support can be renamed");
+        }
+        if (incoming) m.setTargetLabel(cleanLabel(label));
+        else m.setLabel(cleanLabel(label));
+        live.village(side);
+        return movementRepository.save(m);
+    }
+
+    /** The name given on the confirm page, for a command just sent. */
+    @Transactional
+    public void nameNewCommand(Long movementId, String label) {
+        String clean = cleanLabel(label);
+        if (clean != null) movementRepository.findById(movementId).ifPresent(m -> m.setLabel(clean));
+    }
+
     @Transactional
     public Movement cancel(Account actor, Long movementId) {
         Movement m = movementRepository.findById(movementId).orElseThrow(() -> new MovementException("This command no longer exists"));
@@ -220,6 +257,7 @@ public class MovementService {
         back.setTargetVillage(origin);
         back.setType(MovementType.RETURN);
         back.getUnits().putAll(m.getUnits());
+        back.setTargetLabel(m.getLabel());
         back.setDepartedAt(now);
         back.setArrivesAt(now.plusSeconds(Math.max(1, walked)));
         movementRepository.delete(m);

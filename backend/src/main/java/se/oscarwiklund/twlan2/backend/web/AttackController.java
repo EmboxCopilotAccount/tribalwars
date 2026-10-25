@@ -74,6 +74,15 @@ public class AttackController {
         return gameFacade.toDto(gameFacade.playerHomeVillage());
     }
 
+    public record RenameRequest(Long movementId, boolean incoming, String label) {}
+
+    // Names a command in the own list (blank = back to the default name).
+    @PostMapping("/api/village/command/rename")
+    public VillageStateDto rename(@RequestBody RenameRequest request) {
+        movementService.rename(se.oscarwiklund.twlan2.backend.web.AccountContext.get(), request.movementId(), request.incoming(), request.label());
+        return gameFacade.toDto(gameFacade.playerHomeVillage());
+    }
+
     private VillageStateDto send(AttackRequest request, boolean support) {
         Village origin = gameFacade.playerHomeVillage();
         Village target = villageRepository.findById(request.targetVillageId())
@@ -87,9 +96,10 @@ public class AttackController {
             request.units().forEach((type, count) -> units.put(UnitType.valueOf(type), count));
         }
 
-        if (support) movementService.sendSupport(origin, target, units);
-        else movementService.sendAttack(origin, target, units,
-                request.catapultTarget() == null || request.catapultTarget().isBlank() ? null : BuildingType.valueOf(request.catapultTarget()));
+        var m = support ? movementService.sendSupport(origin, target, units)
+                : movementService.sendAttack(origin, target, units,
+                        request.catapultTarget() == null || request.catapultTarget().isBlank() ? null : BuildingType.valueOf(request.catapultTarget()));
+        if (request.label() != null) movementService.nameNewCommand(m.getId(), request.label());
         return gameFacade.toDto(origin);
     }
 

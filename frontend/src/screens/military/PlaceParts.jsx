@@ -20,6 +20,7 @@ import {
   ID_TO_TYPE,
   unitsAtHome,
   morale,
+  isOutgoingCommand,
 } from "../../lib/military";
 import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
@@ -74,7 +75,7 @@ export function PlaceHeader({ mode, navigate }) {
 }
 
 /* ---------------- troop movements (own / foreign commands) ---------------- */
-export function CommandTables({ village, go, onCancel }) {
+export function CommandTables({ village, go, onCancel, onRename }) {
   const now = useNowTick();
   const own = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
     ...m,
@@ -96,14 +97,7 @@ export function CommandTables({ village, go, onCancel }) {
           <tr key={m.icon + m.id}>
             <td>
               <img src={`/graphic/command/${m.icon}.png`} alt="" />{" "}
-              <span className="quickedit-out" data-id={m.id} data-ignore-icons="1">
-                <span className="quickedit-content">
-                  <a href="#" onClick={(e) => navigateTo(e, "info_command:" + m.id, go)}>
-                    <span className="quickedit-label">{m.label}</span>
-                  </a>{" "}
-                  <a className="rename-icon" href="#" title="rename" onClick={(e) => e.preventDefault()} />
-                </span>
-              </span>
+              <CommandName m={m} go={go} onRename={onRename} />
               {cancellable(m) && (
                 <a
                   className="float_right"
@@ -128,6 +122,58 @@ export function CommandTables({ village, go, onCancel }) {
     </table>
   );
 }
+
+/* the command's name with the original's quickedit pencil: click it, type a name, Enter saves, Escape or an empty name
+   goes back (empty = the default name). Shared by the rally point and the village overview. */
+export function CommandName({ m, go, onRename }) {
+  const [draft, setDraft] = useState(null); // null = not editing
+  const save = async () => {
+    const label = draft.trim();
+    setDraft(null);
+    if (label !== (m.label ?? "")) await onRename(m.id, !isOutgoingCommand(m), label);
+  };
+  return (
+    <span className="quickedit-out" data-id={m.id} data-ignore-icons="1">
+      {draft == null ? (
+        <span className="quickedit-content">
+          <a href="#" onClick={(e) => navigateTo(e, "info_command:" + m.id, go)}>
+            <span className="quickedit-label">{m.label}</span>
+          </a>{" "}
+          {onRename && (
+            <a
+              className="rename-icon"
+              href="#"
+              title="Rename"
+              onClick={(e) => {
+                e.preventDefault();
+                setDraft(m.label ?? "");
+              }}
+            />
+          )}
+        </span>
+      ) : (
+        <span className="quickedit-edit">
+          <input
+            type="text"
+            className="command-rename"
+            maxLength={COMMAND_LABEL_MAX}
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                save();
+              } else if (e.key === "Escape") setDraft(null);
+            }}
+          />{" "}
+          <input type="button" className="btn" value="Rename" onClick={save} />
+        </span>
+      )}
+    </span>
+  );
+}
+const COMMAND_LABEL_MAX = 60; // MovementService.LABEL_MAX
 
 /* ---------------- target field (VillageTarget.js) ---------------- */
 const PLACEHOLDER = { coord: "123|456", village_name: "Village name", player_name: "Player name" };
@@ -370,7 +416,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
 }
 
 /* ---------------- command form (command.php) ---------------- */
-export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, onCancelCommand, go }) {
+export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, onCancelCommand, onRenameCommand, go }) {
   const [selectAll, setSelectAll] = useState(false);
   const clicked = useRef("attack");
   const [troopTemplates] = useTroopTemplates(village.worldId);
@@ -540,7 +586,7 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
       </div>
       {/* TODO */}
       <h3 style={{ clear: "both" }}>Troop Movements</h3>
-      <CommandTables village={village} go={go} onCancel={onCancelCommand} />
+      <CommandTables village={village} go={go} onCancel={onCancelCommand} onRename={onRenameCommand} />
     </>
   );
 }
@@ -567,7 +613,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
         e.preventDefault();
         if (sent) return;
         setSent(true);
-        onSend(aim);
+        onSend(aim, name !== attackName ? name : null);
       }}
     >
       <input type="hidden" name={isAttack ? "attack" : "support"} value="true" readOnly />
@@ -593,13 +639,14 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
                     setEditing(true);
                   }}
                 >
-                  <img alt="umbenennen" src="/graphic/rename.png?1" title="umbenennen" />
+                  <img alt="Rename" src="/graphic/rename.png?1" title="Rename" />
                 </a>
               </span>{" "}
               <span id="edit_name" style={{ display: editing ? "inline" : "none" }}>
                 <input
                   id="new_attack_name"
                   type="text"
+                  maxLength={COMMAND_LABEL_MAX}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {

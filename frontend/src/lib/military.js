@@ -315,7 +315,15 @@ export function travelSeconds(from, to, unitIds, worldSpeed = 1) {
 
 // icon + text of one of the player's own commands (backend movement types ATTACKING / SUPPORTING / RETURNING / SUPPORT_IN).
 // The movement carries the other village's coordinates itself: matching by name picks the wrong "Abandoned Camp".
+// icon + name of a command in the lists; the name the player gave it (m.label) wins over the default one
 export function commandInfo(m) {
+  const info = defaultCommandInfo(m);
+  return m.label ? { ...info, label: m.label } : info;
+}
+
+export const isOutgoingCommand = (m) => m.type === "SUPPORTING" || m.type === "ATTACKING";
+
+function defaultCommandInfo(m) {
   const name = villageDisplayName({ name: m.otherVillageName, x: m.otherX, y: m.otherY });
   if (m.type === "SUPPORTING") return { icon: "support", label: `Support for ${name}` };
   if (m.type === "SUPPORT_IN") return { icon: "support", label: `Support from ${name}` };

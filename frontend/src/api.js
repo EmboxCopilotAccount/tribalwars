@@ -131,15 +131,17 @@ export const api = {
   cancelTrain: (id) => request("/village/train/" + id, { method: "DELETE" }),
   moveTrain: (id, position) => request("/village/train/" + id + "/move", { method: "POST", body: JSON.stringify({ position }) }),
   renamePaladin: (name) => request("/village/paladin-name", { method: "PUT", body: JSON.stringify({ name }) }),
-  support: (targetVillageId, units) =>
-    request("/village/support", { method: "POST", body: JSON.stringify({ targetVillageId, units }) }),
+  support: (targetVillageId, units, label) =>
+    request("/village/support", { method: "POST", body: JSON.stringify({ targetVillageId, units, label }) }),
   withdrawSupport: (armyId, units) =>
     request("/village/support/withdraw", { method: "POST", body: JSON.stringify({ armyId, units }) }),
+  renameCommand: (movementId, incoming, label) =>
+    request("/village/command/rename", { method: "POST", body: JSON.stringify({ movementId, incoming, label }) }),
   cancelCommand: (movementId) => request("/village/command/cancel", { method: "POST", body: JSON.stringify({ movementId }) }),
   sendBackSupport: (armyId) => request("/village/support/sendback", { method: "POST", body: JSON.stringify({ armyId }) }),
   // catapultTarget: backend BuildingType the catapults aim at (undefined = random)
-  attack: (targetVillageId, units, catapultTarget) =>
-    request("/village/attack", { method: "POST", body: JSON.stringify({ targetVillageId, units, catapultTarget }) }),
+  attack: (targetVillageId, units, catapultTarget, label) =>
+    request("/village/attack", { method: "POST", body: JSON.stringify({ targetVillageId, units, catapultTarget, label }) }),
 
   // ---- tribes (every action answers with the viewer's fresh tribe state)
   farm: () => request("/farm"),

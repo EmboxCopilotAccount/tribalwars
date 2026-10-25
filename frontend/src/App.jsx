@@ -321,8 +321,9 @@ export default function App() {
     showInfo(count === 1 ? "Gold coin minted." : `${count} gold coins minted.`);
   });
   const handleRename = wrap((name) => api.renameVillage(name));
-  const handleAttack = wrap((targetId, units, catapultTarget) => api.attack(targetId, units, catapultTarget));
-  const handleSupport = wrap((targetId, units) => api.support(targetId, units));
+  const handleAttack = wrap((targetId, units, catapultTarget, label) => api.attack(targetId, units, catapultTarget, label));
+  const handleSupport = wrap((targetId, units, label) => api.support(targetId, units, label));
+  const handleRenameCommand = wrap((movementId, incoming, label) => api.renameCommand(movementId, incoming, label));
   const handleWithdraw = wrap(async (armyId, units) => {
     await api.withdrawSupport(armyId, units);
     showInfo("The troops are on their way home.");
@@ -446,7 +447,7 @@ export default function App() {
   else if (screenName === "train") content = <TrainScreen village={village} onTrain={handleTrain} onDecommission={handleDecommission} onCancelTrain={handleCancelTrain} onMoveTrain={handleMoveTrain} busy={busy} go={go} />;
   else if (screenName === "market") content = <MarketScreen village={village} villages={villages} go={go} />;
   else if (screenName === "place")
-    content = <PlaceScreen village={village} villages={villages} reports={reports} onAttack={handleAttack} onSupport={handleSupport} onWithdraw={handleWithdraw} onSendBack={handleSendBack} onCancelCommand={handleCancelCommand} busy={busy} go={go} />;
+    content = <PlaceScreen village={village} villages={villages} reports={reports} onAttack={handleAttack} onSupport={handleSupport} onWithdraw={handleWithdraw} onSendBack={handleSendBack} onCancelCommand={handleCancelCommand} onRenameCommand={handleRenameCommand} busy={busy} go={go} />;
   else if (screenName === "building")
     content = <BuildingScreen village={village} type={mode} onBuild={handleBuild} onCancelBuild={handleCancelBuild} onDemolish={handleDemolish} onMoveBuild={handleMoveBuild} onFinishBuild={handleFinishBuild} onRename={handleRename} onTrain={handleTrain} onCancelTrain={handleCancelTrain} onMoveTrain={handleMoveTrain} onRenamePaladin={handleRenamePaladin} onMintCoin={handleMintCoin} onResearch={handleResearch} onCancelResearch={handleCancelResearch} busy={busy} go={go} />;
   else if (TRAIN_BUILDING_IDS.includes(screenName))
