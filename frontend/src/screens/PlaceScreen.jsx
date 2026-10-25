@@ -1,11 +1,12 @@
 // screen=place — the rally point. Structure follows templates/twlan/controllers/game/place/*.php:
 //   header + navi (Commands | Secret | Troops | Simulator | Troop-Templates)
 //   command: form (units, target field, Attack/Support) -> confirm step (try=confirm) -> send
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PreErrorBox } from "../lib/ui";
 import { ID_TO_TYPE, UNIT_LIST, moraleAgainst, travelSeconds, unitsAtHome, useHashNav, useNowTick } from "../lib/military";
 import { CommandConfirm, CommandForm, PlaceHeader, SimMode, TargetField, UnitsMode } from "./military/PlaceParts";
 import { pushRecent } from "../lib/targets";
+import { takeCommandPreset } from "../lib/commandPreset";
 import { FarmAssistant } from "./military/FarmAssistant";
 import { useUnitPopup } from "./military/UnitPopup";
 
@@ -36,6 +37,19 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
       setTargetType("coord");
     }
   }
+  // troops handed over by a report ("» Attack again ..."), once the sending village is the current one
+  useEffect(() => {
+    const units = takeCommandPreset(village.id);
+    if (!units) return;
+    const at = unitsAtHome(village);
+    const c = {};
+    for (const u of UNIT_LIST) {
+      const n = units === "all" ? at[u.id] : Math.min(units[u.id] ?? 0, at[u.id]);
+      if (n > 0) c[u.id] = String(n);
+    }
+    setCounts(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [village.id]);
   const [error, setError] = useState(null);
   // confirmation step: { target, units, isAttack }
   const [confirm, setConfirm] = useState(null);

@@ -17,6 +17,7 @@ import {
 import { useUnitPopup } from "./military/UnitPopup";
 import { isBattle, reportLoot, scoutsOnly } from "../lib/farm";
 import { setSimPreset, simForm } from "../lib/simPreset";
+import { setCommandPreset } from "../lib/commandPreset";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -574,7 +575,7 @@ function OtherReportView({ report: r, reports, villages, go, popup, onDelete }) 
   );
 }
 
-function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
+function ReportView({ report: r, reports, villages, go, popup, onDelete, onSelectVillage, currentVillageId }) {
   const from = reportVillage(r, "attacker", villages);
   const toSide = reportVillage(r, "defender", villages);
   const to = toSide.live;
@@ -604,6 +605,15 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   const toSim = (e, att, def, wall) => {
     setSimPreset(simForm({ att, def: showDefenderTroops ? def : {}, wall, morale: r.morale, luck, night: (r.nightBonus ?? 100) > 100 }));
     go(e, "place:sim");
+  };
+  // "attack again": from the village the attack came from (still ours?), at the other side's village
+  const own = (side) => side.id != null && villages.some((v) => v.id === side.id && v.ownerType === "PLAYER" && v.ownerName === PLAYER_NAME);
+  const enemy = r.defenderView ? from : toSide;
+  const canRepeat = !r.defenderView && own(from);
+  const attackFrom = (e, villageId, units) => {
+    if (units) setCommandPreset(villageId, units);
+    if (villageId != null && villageId !== currentVillageId) onSelectVillage?.(villageId);
+    go(e, "place:" + enemy.id);
   };
   const exportCode = useMemo(() => {
     try {
@@ -850,17 +860,23 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                         » Insert surviving troops into the simulator
                       </a>
                       <hr />
-                      <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
-                        » Attack the village
-                      </a>
-                      <br />
-                      <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
-                        » Mit gleichen Truppe noch einmal angreifen
-                      </a>
-                      <br />
-                      <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
-                        » Mit allen Truppe noch einmal angreifen
-                      </a>
+                      {enemy.live && !own(enemy) && (
+                        <a id="report_attack" href="#" onClick={(e) => attackFrom(e, canRepeat ? from.id : null)}>
+                          » Attack this village
+                        </a>
+                      )}
+                      {canRepeat && enemy.live && (
+                        <>
+                          <br />
+                          <a id="report_attack_same" href="#" onClick={(e) => attackFrom(e, from.id, beforeA)}>
+                            » Attack again with the same troops
+                          </a>
+                          <br />
+                          <a id="report_attack_all" href="#" onClick={(e) => attackFrom(e, from.id, "all")}>
+                            » Attack again with all troops
+                          </a>
+                        </>
+                      )}
                       <hr />
                       <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
                         » Publish the report
@@ -890,7 +906,7 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   );
 }
 
-export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged }) {
+export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged, onSelectVillage, currentVillageId }) {
   const villages = useVillages();
   const popup = useUnitPopup();
   const [deleted, setDeleted] = useState(() => loadSet(LS_DELETED));
@@ -974,7 +990,7 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
               {viewed && !isBattle(viewed) ? (
                 <OtherReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
               ) : viewed ? (
-                <ReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
+                <ReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} onSelectVillage={onSelectVillage} currentVillageId={currentVillageId} />
               ) : (
                 <ReportList reports={visible} villages={villages} go={nav} readIds={readIds} onDelete={onDelete} />
               )}
