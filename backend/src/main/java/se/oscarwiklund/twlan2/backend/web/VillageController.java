@@ -38,6 +38,12 @@ public class VillageController {
         return gameFacade.toDto(gameFacade.playerHomeVillage());
     }
 
+    // Overviews (Production, Troops, Commands, ...): every village of the player
+    @GetMapping("/api/overview/villages")
+    public List<se.oscarwiklund.twlan2.backend.web.dto.OverviewDto> overview() {
+        return gameFacade.villageOverview();
+    }
+
     public record RenameRequest(String name) {}
 
     @PutMapping("/api/village/name")

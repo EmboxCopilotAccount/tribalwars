@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { OV, levelOf, villagePoints } from "../lib/data";
-import { PreErrorBox } from "../lib/ui";
 import { BonusIcon } from "../lib/BonusIcon";
 import { ShipmentsTable, useMarket } from "./MarketScreen";
 import { continentOf } from "../lib/military";
+import { OverviewModeView } from "./OverviewModes";
 
 /* Mirrors templates overviewvillages/{header,combined,groups,footer}.php of the original.
    Real behaviour (checked against the running original):
-   - modes with a template: combined, groups (trader is ours, see TransportsView). Every other mode in the menu (prod, trader, units, commands,
-     incomings, buildings, tech) renders <div class="error_box">TBI</div> + the empty paged view + text " TODO".
+   - modes with a template: combined, groups. Every other mode in the menu (prod, trader, units, commands, incomings, buildings,
+     tech) renders <div class="error_box">TBI</div> + the empty paged view + text " TODO" there; ours are TransportsView and
+     OverviewModes.jsx.
    - unknown/missing mode renders like "combined".
    - the row icons/titles are static in the original (its own "TODO: Implement real data here"). */
 
@@ -452,12 +453,10 @@ export function OverviewVillagesScreen({ village, mode, go, onRename, onSelectVi
   const current = OVERVIEW_MODES.some(([m]) => m === mode) ? mode : "combined";
   const name = village.name;
   const setRenamed = (n) => onRename && onRename(n);
-  const hasTemplate = current === "combined" || current === "groups" || current === "trader";
   const allVillages = village.myVillages?.length ? village.myVillages : [{ id: village.id, name, x: village.x, y: village.y, populationUsed: village.populationUsed, populationCapacity: village.populationCapacity, farmLevel: levelOf(village, "FARM"), units: village.units }];
   const inGroup = groups ? groups.inGroup(allVillages) : allVillages;
   return (
     <>
-      {!hasTemplate && <PreErrorBox text="TBI" />}
       <input type="hidden" id="overview" value={current} readOnly />
       <table className="vis modemenu" width="100%" id="overview_menu">
         <tbody>
@@ -487,7 +486,7 @@ export function OverviewVillagesScreen({ village, mode, go, onRename, onSelectVi
         {current === "combined" && <CombinedTable village={village} go={go} name={name} onRename={setRenamed} onSelectVillage={onSelectVillage} rows={inGroup} />}
         {current === "groups" && groups && <GroupsView village={village} go={go} name={name} onRename={setRenamed} groups={groups} villages={allVillages} />}
         {current === "trader" && <TransportsView village={village} go={go} rows={inGroup} />}
-        {!hasTemplate && " TODO"}
+        {!["combined", "groups", "trader"].includes(current) && <OverviewModeView key={current} mode={current} village={village} go={go} onSelectVillage={onSelectVillage} inGroup={groups?.inGroup} />}
       </div>
       <form action={`game.php?village=${village.id}&screen=overview_villages&mode=combined&action=change_page_size0`} method="post" onSubmit={noop}>
         <table className="vis">

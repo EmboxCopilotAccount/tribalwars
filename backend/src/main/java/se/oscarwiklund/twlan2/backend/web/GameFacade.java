@@ -17,6 +17,7 @@ import se.oscarwiklund.twlan2.backend.service.TrainService;
 import se.oscarwiklund.twlan2.backend.service.WorldSettings;
 import se.oscarwiklund.twlan2.backend.service.VillageService;
 import se.oscarwiklund.twlan2.backend.service.VictoryService;
+import se.oscarwiklund.twlan2.backend.web.dto.OverviewDto;
 import se.oscarwiklund.twlan2.backend.web.dto.ReportDto;
 import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto;
 import se.oscarwiklund.twlan2.backend.web.dto.VillageStateDto.*;
@@ -182,21 +183,7 @@ public class GameFacade {
                 .map(this::toOutgoingDto)
                 .toList();
 
-        List<MovementDto> incoming = movementRepository.findByOriginVillageOrTargetVillage(village, village).stream()
-                .filter(m -> m.getTargetVillage().getId().equals(village.getId())
-                        && (m.getType() == MovementType.RETURN || m.getType() == MovementType.SUPPORT
-                        || (m.getType() == MovementType.ATTACK && !MovementService.isSameOwner(m.getOriginVillage(), village))))
-                .map(m -> m.getType() == MovementType.ATTACK
-                        // what an enemy sends is not shown, only that it is coming
-                        ? new MovementDto(m.getId(), "INCOMING_ATTACK", m.getOriginVillage().getName(), m.getArrivesAt(), Map.of(),
-                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
-                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null)
-                        : new MovementDto(m.getId(), m.getType() == MovementType.RETURN ? "RETURNING" : "SUPPORT_IN",
-                                m.getOriginVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
-                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(),
-                                m.getCarriedWood(), m.getCarriedClay(), m.getCarriedIron(),
-                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null))
-                .toList();
+        List<MovementDto> incoming = incomingDtos(village, movementRepository.findByOriginVillageOrTargetVillage(village, village));
 
         TrainService.PaladinStatus paladin = trainService.paladinStatus(village);
         return new VillageStateDto(
@@ -204,9 +191,7 @@ public class GameFacade {
                 village.getWood(), village.getClay(), village.getIron(),
                 villageService.warehouseCapacity(village),
                 villageService.populationUsed(village), villageService.populationCapacity(village),
-                BuildingType.TIMBER_CAMP.productionPerHour(villageService.levelOf(village, BuildingType.TIMBER_CAMP)) * BonusType.productionFactor(village, BuildingType.TIMBER_CAMP) * settings.speedOf(village),
-                BuildingType.CLAY_PIT.productionPerHour(villageService.levelOf(village, BuildingType.CLAY_PIT)) * BonusType.productionFactor(village, BuildingType.CLAY_PIT) * settings.speedOf(village),
-                BuildingType.IRON_MINE.productionPerHour(villageService.levelOf(village, BuildingType.IRON_MINE)) * BonusType.productionFactor(village, BuildingType.IRON_MINE) * settings.speedOf(village),
+                perHour(village, BuildingType.TIMBER_CAMP), perHour(village, BuildingType.CLAY_PIT), perHour(village, BuildingType.IRON_MINE),
                 buildings, buildQueueDtos, units, trainQueueDtos, unitCosts, outgoing, incoming,
                 settings.speedOf(village),
                 settings.travelSpeedOf(village),
@@ -290,6 +275,89 @@ public class GameFacade {
                     (int) Math.ceil(villageService.loyaltyOf(v)), villageService.levelOf(v, BuildingType.FARM), home, bonusCode(v)));
         }
         out.sort(java.util.Comparator.comparing(OwnVillageDto::name).thenComparing(OwnVillageDto::id));
+        return out;
+    }
+
+    // returning troops, support and (other players') attacks heading for the village, out of its movements
+    private List<MovementDto> incomingDtos(Village village, List<Movement> movements) {
+        return movements.stream()
+                .filter(m -> m.getTargetVillage().getId().equals(village.getId())
+                        && (m.getType() == MovementType.RETURN || m.getType() == MovementType.SUPPORT
+                        || (m.getType() == MovementType.ATTACK && !MovementService.isSameOwner(m.getOriginVillage(), village))))
+                .map(m -> m.getType() == MovementType.ATTACK
+                        // what an enemy sends is not shown, only that it is coming
+                        ? new MovementDto(m.getId(), "INCOMING_ATTACK", m.getOriginVillage().getName(), m.getArrivesAt(), Map.of(),
+                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(), 0, 0, 0,
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null)
+                        : new MovementDto(m.getId(), m.getType() == MovementType.RETURN ? "RETURNING" : "SUPPORT_IN",
+                                m.getOriginVillage().getName(), m.getArrivesAt(), stringifyUnits(m.getUnits()),
+                                m.getOriginVillage().getId(), m.getTargetVillage().getId(), m.getDepartedAt(),
+                                m.getCarriedWood(), m.getCarriedClay(), m.getCarriedIron(),
+                                m.getOriginVillage().getX(), m.getOriginVillage().getY(), null))
+                .toList();
+    }
+
+    private double perHour(Village village, BuildingType mine) {
+        return mine.productionPerHour(villageService.levelOf(village, mine)) * BonusType.productionFactor(village, mine) * settings.speedOf(village);
+    }
+
+    // Overviews: a row for each of the player's villages (see OverviewDto)
+    @Transactional
+    public List<OverviewDto> villageOverview() {
+        Village current = playerHomeVillage();
+        List<OverviewDto> out = new java.util.ArrayList<>();
+        for (Village v : villageRepository.findByWorldAndOwner(current.getWorld(), current.getOwner())) {
+            villageService.settleResources(v);
+            villageRepository.save(v);
+            int points = 0;
+            Map<String, Integer> levels = new LinkedHashMap<>();
+            for (BuildingType type : BuildingType.values()) levels.put(type.name(), 0);
+            for (Building b : buildingRepository.findByVillage(v)) {
+                points += b.getType().points(b.getLevel());
+                levels.put(b.getType().name(), b.getLevel());
+            }
+            List<OverviewDto.QueuedBuilding> queue = buildQueueItemRepository.findByVillageOrderByPositionAsc(v).stream()
+                    .map(q -> new OverviewDto.QueuedBuilding(q.getType().name(), q.getTargetLevel(), q.isDemolish(), q.getCompletesAt()))
+                    .toList();
+            Map<String, Integer> recruiting = new LinkedHashMap<>();
+            for (TrainQueueItem t : trainQueueItemRepository.findByVillageOrderByPositionAsc(v)) {
+                if (!t.isDecommission()) recruiting.merge(t.getType().name(), t.getTotalCount() - t.getProducedCount(), Integer::sum);
+            }
+            List<String> researched = ResearchService.TECHS.keySet().stream()
+                    .filter(u -> researchService.isResearched(v, u)).map(UnitType::name).toList();
+            List<String> researching = researchService.queueOf(v).stream().map(q -> q.getUnit().name()).toList();
+            Map<String, Integer> home = new LinkedHashMap<>();
+            for (UnitStock stock : unitStockRepository.findByVillage(v)) home.put(stock.getType().name(), stock.getCount());
+            Map<String, Integer> support = new LinkedHashMap<>();
+            supportService.guestsAt(v).forEach(g -> g.getUnits().forEach((t, n) -> support.merge(t.name(), n, Integer::sum)));
+            Map<String, Integer> away = new LinkedHashMap<>();
+            supportService.stationedFrom(v).forEach(g -> g.getUnits().forEach((t, n) -> away.merge(t.name(), n, Integer::sum)));
+
+            List<Movement> movements = movementRepository.findByOriginVillageOrTargetVillage(v, v);
+            List<MovementDto> commands = new java.util.ArrayList<>();
+            List<MovementDto> incoming = new java.util.ArrayList<>();
+            Map<String, Integer> moving = new LinkedHashMap<>();
+            for (Movement m : movements) {
+                boolean sent = m.getType() != MovementType.RETURN && m.getOriginVillage().getId().equals(v.getId());
+                boolean back = m.getType() == MovementType.RETURN && m.getTargetVillage().getId().equals(v.getId());
+                if (sent) commands.add(toOutgoingDto(m));
+                if (sent || back) m.getUnits().forEach((t, n) -> moving.merge(t.name(), n, Integer::sum));
+            }
+            for (MovementDto m : incomingDtos(v, movements)) {
+                if ("RETURNING".equals(m.type())) commands.add(m);
+                else incoming.add(m);
+            }
+            commands.sort(java.util.Comparator.comparing(MovementDto::arrivesAt));
+            incoming.sort(java.util.Comparator.comparing(MovementDto::arrivesAt));
+
+            out.add(new OverviewDto(v.getId(), v.getName(), v.getX(), v.getY(), points, bonusCode(v),
+                    v.getWood(), v.getClay(), v.getIron(), villageService.warehouseCapacity(v),
+                    perHour(v, BuildingType.TIMBER_CAMP), perHour(v, BuildingType.CLAY_PIT), perHour(v, BuildingType.IRON_MINE),
+                    villageService.populationUsed(v), villageService.populationCapacity(v),
+                    marketService.availableMerchants(v), marketService.totalMerchants(v),
+                    levels, queue, recruiting, researched, researching, home, support, away, moving, commands, incoming));
+        }
+        out.sort(java.util.Comparator.comparing(OverviewDto::name).thenComparing(OverviewDto::id));
         return out;
     }
 

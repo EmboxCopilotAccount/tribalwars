@@ -108,6 +108,7 @@ export const api = {
   createWorld: (name, speed) => request("/worlds", { method: "POST", body: JSON.stringify({ name, speed }) }),
   getVillage: () => request("/village"),
   getVillages: () => request("/villages"),
+  getVillageOverview: () => request("/overview/villages"),
   getReports: () => request("/reports"),
   deleteReports: (ids) => request("/reports/delete", { method: "POST", body: JSON.stringify({ ids }) }),
   renameVillage: (name) => request("/village/name", { method: "PUT", body: JSON.stringify({ name }) }),
