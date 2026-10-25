@@ -1,6 +1,6 @@
 // screen=report — mirrors templates/twlan/controllers/game/report/{index,overview,view_attack}.php.
-// The original ignores `mode` (every tab renders the "all" list with the first tab highlighted),
-// so we do the same. Single reports: hash "report:all:<id>"  (original: mode=all&view=<id>).
+// The tabs attacks, Defenses, support, trade and other filter the list; the rest still show all reports.
+// Single reports: hash "report:all:<id>"  (original: mode=all&view=<id>).
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { PLAYER_NAME } from "../lib/data";
@@ -15,7 +15,7 @@ import {
   villageDisplayName,
 } from "../lib/military";
 import { useUnitPopup } from "./military/UnitPopup";
-import { reportLoot, scoutsOnly } from "../lib/farm";
+import { isBattle, reportLoot, scoutsOnly } from "../lib/farm";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -54,8 +54,41 @@ const saveSet = (key, set) => {
 // the player who attacked (reports written before players were named are the viewer's own attacks)
 const attackerName = (r) => r.attackerPlayer ?? PLAYER_NAME;
 
-// green: nothing lost, yellow: won with losses, red: lost - from the viewer's side (a defender report is the mirror image)
+// tabs that filter the list (the others show every report)
+const FILTERING_MODES = ["attack", "defense", "support", "trade", "other"];
+function inMode(r, mode) {
+  switch (mode) {
+    case "attack": return isBattle(r) && !r.defenderView;
+    case "defense": return isBattle(r) && !!r.defenderView;
+    case "support": return r.kind === "SUPPORT";
+    case "trade": return r.kind === "TRADE";
+    case "other": return false; // nothing writes other reports (yet)
+    default: return true;
+  }
+}
+
+// support and trade reports: the "from" village is the attacker side, the "to" village the defender side
+function reportSubject(r, fromName, toName) {
+  switch (r.event) {
+    case "SUPPORT_ARRIVED": return `${attackerName(r)} (${fromName}) supports ${toName}`;
+    case "SUPPORT_SENT_BACK": return `${toName} sent the support from ${fromName} back`;
+    case "SUPPORT_WITHDRAWN": return `${attackerName(r)} (${fromName}) withdrew the support from ${toName}`;
+    case "TRADE_DELIVERED": return `${fromName} delivers resources to ${toName}`;
+    default: return isBattle(r) ? `${attackerName(r)} (${fromName}) attacks ${toName}` : `${fromName} - ${toName}`;
+  }
+}
+
+function reportIcon(r) {
+  if (r.event === "SUPPORT_ARRIVED") return "/graphic/command/support.png";
+  if (r.kind === "SUPPORT") return "/graphic/command/back.png";
+  if (r.kind === "TRADE") return "/graphic/buildings/market.png";
+  return "/graphic/command/attack.png";
+}
+
+// green: nothing lost, yellow: won with losses, red: lost - from the viewer's side (a defender report is the mirror image);
+// blue: support and trade, nothing to win or lose
 function dotColor(r) {
+  if (!isBattle(r)) return "blue";
   const viewerWon = r.defenderView ? r.outcome !== "ATTACKER_WIN" : r.outcome === "ATTACKER_WIN";
   if (!viewerWon) return "red";
   const lost = Object.values((r.defenderView ? r.defenderLosses : r.attackerLosses) ?? {}).reduce((a, b) => a + b, 0);
@@ -99,6 +132,7 @@ const DOTS = [
   ["green", "no losses"],
   ["yellow", "won with losses"],
   ["red", "lost"],
+  ["blue", "support, trade"],
 ];
 
 // "Show:" row above the list: one checkbox per report dot colour
@@ -186,14 +220,14 @@ function ReportList({ reports: all, villages, go, readIds, onDelete }) {
                   </td>
                   <td style={{ overflow: "hidden" }}>
                     <div className="nowrap float_right" style={{ marginTop: 2 }}>
-                      <img src="/graphic/command/attack.png" className="" />
+                      <img src={reportIcon(r)} className="" />
                     </div>
                     <img src={`/graphic/dots/${dotColor(r)}.png`} className="" />{" "}
                     <span className="quickedit" data-id={r.id}>
                       <span className="quickedit-content">
                         <a href="#" onClick={(e) => go(e, `report:all:${r.id}`)}>
                           <span className="quickedit-label">
-                            {`${attackerName(r)} (${fromName}) attacks ${toName}`}
+                            {reportSubject(r, fromName, toName)}
                           </span>
                         </a>
                         {!readIds.has(r.id) && "(new)"}{" "}
@@ -205,6 +239,11 @@ function ReportList({ reports: all, villages, go, readIds, onDelete }) {
                 </tr>
               );
             })}
+            {all.length === 0 && (
+              <tr>
+                <td colSpan="3">No reports.</td>
+              </tr>
+            )}
             {reports.length === 0 && all.length > 0 && (
               <tr>
                 <td colSpan="3">No reports match the filter. Tick a colour above to show its reports.</td>
@@ -376,6 +415,161 @@ function SpyInfo({ spy, popup }) {
         </tbody>
       </table>
     </>
+  );
+}
+
+// "Delete" and "next report" above a single report
+function ReportActions({ r, next, go, onDelete }) {
+  return (
+    <table align="center" className="vis" width="100%" style={{ marginTop: -2 }}>
+      <tbody>
+        <tr>
+          <td align="center" width="50%">
+            <a
+              href="#"
+              onClick={(e) => {
+                onDelete([r.id]);
+                go(e, "report:all");
+              }}
+            >
+              Delete
+            </a>
+          </td>
+          <td align="center" width="50%">
+            <a href="#" id="report-next" onClick={(e) => go(e, `report:all:${next.id}`)}>
+              <img src="/graphic/arrow_up.png" style={{ verticalAlign: -2 }} alt="" />
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function VillageCell({ side, go }) {
+  return (
+    <span className="village_anchor" data-id={side.id ?? ""}>
+      <a href="#" onClick={(e) => navigateTo(e, side.id ? "info_village:" + side.id : "info_village", go)}>{side.label}</a>
+    </span>
+  );
+}
+
+function PlayerCell({ name, go }) {
+  return name ? <a href="#" onClick={(e) => navigateTo(e, "info_player:p_" + name, go)}>{name}</a> : "---";
+}
+
+function Resources({ wood, clay, iron }) {
+  return (
+    <>
+      {[["wood", wood], ["stone", clay], ["iron", iron]].map(([k, n]) => (
+        <span className="nowrap" key={k}>
+          <span className={`icon header ${k}`}> </span>
+          {Math.floor(n ?? 0)}{" "}
+        </span>
+      ))}
+    </>
+  );
+}
+
+// Support arriving / going home and merchants delivering: who, from where to where, and what
+function OtherReportView({ report: r, reports, villages, go, popup, onDelete }) {
+  const from = reportVillage(r, "attacker", villages);
+  const to = reportVillage(r, "defender", villages);
+  const idx = reports.findIndex((x) => x.id === r.id);
+  const next = reports[idx + 1] ?? r;
+  const trade = r.kind === "TRADE";
+  const units = toIdMap(r.attackerUnits);
+  const back = r.tradeBack ?? {};
+  const hasBack = (back.wood ?? 0) + (back.clay ?? 0) + (back.iron ?? 0) > 0;
+  return (
+    <table className="vis" width="470">
+      <tbody>
+        <tr>
+          <td className="nopad">
+            <ReportActions r={r} next={next} go={go} onDelete={onDelete} />
+            <table className="vis" width="100%">
+              <tbody>
+                <tr>
+                  <th width="140">Subject</th>
+                  <th>
+                    <img src={`/graphic/dots/${dotColor(r)}.png`} alt="" />{" "}
+                    <img src={reportIcon(r)} alt="" /> {reportSubject(r, from.label, to.label)}
+                  </th>
+                </tr>
+                <tr>
+                  <td>Time</td>
+                  <td>{fmtOnTime(r.occurredAt)}</td>
+                </tr>
+                <tr>
+                  <td colSpan="2" valign="top" style={{ border: "solid 1px black", padding: 4 }}>
+                    <table width="100%" style={{ border: "1px solid #DED3B9" }}>
+                      <tbody>
+                        <tr>
+                          <th style={{ width: "20%" }}>{trade ? "Sender:" : "Supporter:"}</th>
+                          <th><PlayerCell name={r.attackerPlayer} go={go} /></th>
+                        </tr>
+                        <tr>
+                          <td>origin:</td>
+                          <td><VillageCell side={from} go={go} /></td>
+                        </tr>
+                        <tr>
+                          <th>{trade ? "Recipient:" : "Supported:"}</th>
+                          <th><PlayerCell name={r.defenderPlayer} go={go} /></th>
+                        </tr>
+                        <tr>
+                          <td>target:</td>
+                          <td><VillageCell side={to} go={go} /></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <br />
+                    {trade ? (
+                      <table width="100%" style={{ border: "1px solid #DED3B9" }}>
+                        <tbody>
+                          <tr>
+                            <th style={{ width: "20%" }}>Delivered:</th>
+                            <td><Resources wood={r.lootWood} clay={r.lootClay} iron={r.lootIron} /></td>
+                          </tr>
+                          {hasBack && (
+                            <tr>
+                              <th>Bringing back:</th>
+                              <td><Resources wood={back.wood} clay={back.clay} iron={back.iron} /></td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <table className="vis" style={{ borderCollapse: "collapse" }}>
+                        <tbody>
+                          <tr className="center">
+                            <td />
+                            {UNIT_LIST.map((u) => (
+                              <td width="35" key={u.id}>
+                                <a className="unit_link" href="#" onClick={(e) => popup.open(e, u.id)}>
+                                  <img src={`/graphic/unit/unit_${u.id}.png`} title={u.name} alt="" className={!units[u.id] ? "faded" : undefined} />
+                                </a>
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td width="20%">Units:</td>
+                            {UNIT_LIST.map((u) => (
+                              <td style={{ textAlign: "center" }} className={"unit-item" + (units[u.id] === 0 ? " hidden" : "")} key={u.id}>
+                                {units[u.id]}
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -700,8 +894,8 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
   // "report:<mode>:<id>" -> single report view (original: &mode=all&view=<id>)
   const parts = hashParts();
   const viewId = parts[0] === "report" && parts[2] ? Number(parts[2]) : null;
-  // the "attacks" / "Defenses" tabs split the reports by the side the viewer was on
-  const visible = reports.filter((r) => !deleted.has(r.id) && (mode === "attack" ? !r.defenderView : mode === "defense" ? !!r.defenderView : true));
+  // "attacks" / "Defenses" split the battles by the side the viewer was on; "support" / "trade" by kind
+  const visible = reports.filter((r) => !deleted.has(r.id) && inMode(r, mode));
   const viewed = viewId != null ? visible.find((r) => r.id === viewId) : null;
 
   useEffect(() => {
@@ -760,7 +954,7 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
                 <tbody>
                   {REPORT_MODES.map(([m, label]) => (
                     <tr key={m}>
-                      <td className={m === (["attack", "defense"].includes(mode) ? mode : "all") ? "selected" : undefined} style={{ minWidth: 80 }}>
+                      <td className={m === (FILTERING_MODES.includes(mode) ? mode : "all") ? "selected" : undefined} style={{ minWidth: 80 }}>
                         <a href="#" onClick={(e) => nav(e, "report:" + m)}>
                           {label + " "}
                         </a>
@@ -771,7 +965,9 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
               </table>
             </td>
             <td valign="top" width="100%">
-              {viewed ? (
+              {viewed && !isBattle(viewed) ? (
+                <OtherReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
+              ) : viewed ? (
                 <ReportView report={viewed} reports={visible} villages={villages} go={nav} popup={popup} onDelete={onDelete} />
               ) : (
                 <ReportList reports={visible} villages={villages} go={nav} readIds={readIds} onDelete={onDelete} />

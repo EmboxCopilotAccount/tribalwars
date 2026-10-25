@@ -8,7 +8,7 @@ import { fmtDuration } from "../../lib/data";
 import { Timer } from "../../lib/ui";
 import { pushRecent } from "../../lib/targets";
 import {
-  TEMPLATE_KEYS, visibleTemplateKeys, ago, cleanUnits, farmTargets, lastReports, loadHidden, loadSettings, loadTemplates,
+  TEMPLATE_KEYS, visibleTemplateKeys, ago, cleanUnits, farmTargets, isBattle, lastReports, loadHidden, loadSettings, loadTemplates,
   onFarmSynced, plunderable, reportDot, saveHidden, saveSettings, saveTemplates, templateProblem, toBackendUnits,
 } from "../../lib/farm";
 
@@ -108,7 +108,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
   const reportedId = useMemo(() => {
     const out = new Map();
     for (const r of reports) {
-      if (r.defenderView || r.defenderVillageId == null) continue;
+      if (!isBattle(r) || r.defenderView || r.defenderVillageId == null) continue;
       out.set(r.defenderVillageId, Math.max(out.get(r.defenderVillageId) ?? 0, r.id ?? 0));
     }
     return out;

@@ -153,6 +153,12 @@ export function farmTargets(village, villages, settings, hidden) {
     .sort((a, b) => a.distance - b.distance || a.id - b.id);
 }
 
+/** Battles (and scoutings) are what the farm tools learn from; support and merchant reports are not. Reports
+ * written before report kinds existed are all battles. */
+export function isBattle(r) {
+  return !r.kind || r.kind === "BATTLE";
+}
+
 // the colour of a report's dot in the report list (green: won without losses, yellow: won with losses, red: lost)
 export function reportDot(r) {
   if (r.outcome !== "ATTACKER_WIN") return "red";
@@ -183,7 +189,7 @@ export function lastReports(reports) {
   const out = new Map();
   const order = (a, b) => new Date(a.occurredAt) - new Date(b.occurredAt) || (a.id ?? 0) - (b.id ?? 0);
   for (const r of [...reports].sort(order)) {
-    if (r.defenderView || r.defenderVillageId == null) continue;
+    if (!isBattle(r) || r.defenderView || r.defenderVillageId == null) continue;
     const entry = out.get(r.defenderVillageId) ?? {};
     if (r.spy) {
       entry.spy = r;

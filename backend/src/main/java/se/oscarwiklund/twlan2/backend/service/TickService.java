@@ -32,12 +32,15 @@ public class TickService {
     private final TribeService tribes;
     private final SupportService support;
     private final MarketService market;
+    private final ReportService reports;
 
     public TickService(LiveUpdates live, BuildQueueItemRepository buildQueueItemRepository, BuildingRepository buildingRepository,
                         TrainQueueItemRepository trainQueueItemRepository, UnitStockRepository unitStockRepository,
                         MovementRepository movementRepository, VillageService villageService,
                         CombatService combatService, GameSettings settings, AchievementService achievements,
-                        TrainQueues trainQueues, ResearchService research, TribeService tribes, SupportService support, MarketService market) {
+                        TrainQueues trainQueues, ResearchService research, TribeService tribes, SupportService support, MarketService market,
+                        ReportService reports) {
+        this.reports = reports;
         this.live = live;
         this.market = market;
         this.tribes = tribes;
@@ -199,6 +202,7 @@ public class TickService {
                 } else if (own || tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
                     // still the origin village's troops (its farm, withdrawable), also between a player's own villages
                     support.station(origin, target, movement.getUnits());
+                    reports.support(ReportService.SUPPORT_ARRIVED, origin, target, movement.getUnits());
                 } else {
                     // the target changed hands (or the tribe was left) while the troops were on the road: they turn around
                     Movement back = new Movement();

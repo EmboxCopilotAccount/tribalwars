@@ -9,6 +9,7 @@ import se.oscarwiklund.twlan2.backend.service.MailService;
 import se.oscarwiklund.twlan2.backend.service.MarketService;
 import se.oscarwiklund.twlan2.backend.service.MovementService;
 import se.oscarwiklund.twlan2.backend.service.NobleService;
+import se.oscarwiklund.twlan2.backend.service.ReportService;
 import se.oscarwiklund.twlan2.backend.service.ResearchService;
 import se.oscarwiklund.twlan2.backend.service.ForumService;
 import se.oscarwiklund.twlan2.backend.service.SupportService;
@@ -329,7 +330,7 @@ public class GameFacade {
                         d.getOrDefault("spy_iron", 0), section(d, "spy_building:"), section(d, "spy_home:"), section(d, "spy_away:"))
                 : null;
         return new ReportDto(
-                r.getId(), r.getAttackerVillageName(), r.getDefenderVillageName(), r.getOutcome().name(),
+                r.getId(), r.getAttackerVillageName(), r.getDefenderVillageName(), r.getOutcome() == null ? null : r.getOutcome().name(),
                 stringifyUnitCounts(r.getAttackerLosses()), stringifyUnitCounts(r.getDefenderLosses()),
                 r.getLootWood(), r.getLootClay(), r.getLootIron(), r.getOccurredAt(),
                 r.getLoyaltyFrom(), r.getLoyaltyTo(), r.isConquered(),
@@ -339,7 +340,9 @@ public class GameFacade {
                 r.isDefenderView(), r.getAttackerPlayer(), r.getDefenderPlayer(),
                 d.containsKey("att_village") ? d.get("att_village").longValue() : null,
                 d.containsKey("def_village") ? d.get("def_village").longValue() : null,
-                d.get("att_x"), d.get("att_y"), d.get("def_x"), d.get("def_y"), d.get("night"));
+                d.get("att_x"), d.get("att_y"), d.get("def_x"), d.get("def_y"), d.get("night"),
+                ReportService.category(d),
+                ReportService.event(d), section(d, "back_"));
     }
 
     private static Map<String, Integer> section(Map<String, Integer> detail, String prefix) {

@@ -22,9 +22,12 @@ public class SupportService {
     private final VillageRepository villages;
     private final AccountRepository accounts;
     private final WorldRepository worlds;
+    private final ReportService reports;
 
     public SupportService(StationedTroopsRepository stationed, MovementRepository movements, UnitStockRepository unitStock,
-                          GameSettings settings, VillageRepository villages, AccountRepository accounts, WorldRepository worlds) {
+                          GameSettings settings, VillageRepository villages, AccountRepository accounts, WorldRepository worlds,
+                          ReportService reports) {
+        this.reports = reports;
         this.stationed = stationed;
         this.movements = movements;
         this.unitStock = unitStock;
@@ -56,14 +59,18 @@ public class SupportService {
     public Movement withdraw(Account actor, Long armyId, Map<UnitType, Integer> units) {
         StationedTroops row = stationed.findById(armyId).orElseThrow(() -> new MovementService.MovementException("These troops are no longer there"));
         if (!isOwner(actor, row.getOriginVillage())) throw new MovementService.MovementException("These are not your troops");
-        return returnTroops(row, units);
+        Movement back = returnTroops(row, units);
+        reports.support(ReportService.SUPPORT_WITHDRAWN, back.getTargetVillage(), back.getOriginVillage(), back.getUnits());
+        return back;
     }
 
     @Transactional
     public Movement sendBack(Account actor, Long armyId) {
         StationedTroops row = stationed.findById(armyId).orElseThrow(() -> new MovementService.MovementException("These troops are no longer there"));
         if (!isOwner(actor, row.getHostVillage())) throw new MovementService.MovementException("These troops are not stationed in your village");
-        return returnTroops(row, null);
+        Movement back = returnTroops(row, null);
+        reports.support(ReportService.SUPPORT_SENT_BACK, back.getTargetVillage(), back.getOriginVillage(), back.getUnits());
+        return back;
     }
 
     private static boolean isOwner(Account account, Village village) {

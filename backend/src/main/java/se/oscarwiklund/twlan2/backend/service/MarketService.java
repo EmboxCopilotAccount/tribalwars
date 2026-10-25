@@ -49,9 +49,11 @@ public class MarketService {
     private final VillageService villageService;
     private final GameSettings settings;
     private final AchievementService achievements;
+    private final ReportService reports;
 
     public MarketService(LiveUpdates live, TransportRepository transports, MarketOfferRepository offers, VillageRepository villages,
-                         VillageService villageService, GameSettings settings, AchievementService achievements) {
+                         VillageService villageService, GameSettings settings, AchievementService achievements, ReportService reports) {
+        this.reports = reports;
         this.live = live;
         this.transports = transports;
         this.offers = offers;
@@ -165,6 +167,8 @@ public class MarketService {
                     deliver(target, Resource.WOOD, t.getOutWood());
                     deliver(target, Resource.CLAY, t.getOutClay());
                     deliver(target, Resource.IRON, t.getOutIron());
+                    reports.trade(origin, target, t.getOutWood(), t.getOutClay(), t.getOutIron(),
+                            t.getBackWood(), t.getBackClay(), t.getBackIron());
                 }
                 t.setReturning(true);
                 t.setDepartedAt(now);
