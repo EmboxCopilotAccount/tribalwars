@@ -18,6 +18,7 @@ import {
   villageDisplayName,
   TYPE_TO_ID,
   ID_TO_TYPE,
+  unitsAtHome,
 } from "../../lib/military";
 import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
@@ -956,6 +957,26 @@ export function SimMode({ popup, village }) {
       for (const u of UNIT_LIST) delete n[prefix + u.id];
       return n;
     });
+  // {unitId: n} into one side of the form (empty fields for 0)
+  const fillSide = (prefix, units, extra = {}) =>
+    setF((s) => {
+      const n = { ...s, ...extra };
+      for (const u of UNIT_LIST) n[prefix + u.id] = units[u.id] > 0 ? String(units[u.id]) : "";
+      return n;
+    });
+  const insertHome = (e) => {
+    e.preventDefault();
+    fillSide("att_", unitsAtHome(village));
+  };
+  // what defends this village now: its own troops at home, the support stationed here and its wall
+  const insertDefence = (e) => {
+    e.preventDefault();
+    const units = unitsAtHome(village);
+    for (const army of village.stationed ?? []) {
+      for (const [type, n] of Object.entries(army.units ?? {})) if (TYPE_TO_ID[type]) units[TYPE_TO_ID[type]] += n;
+    }
+    fillSide("def_", units, { def_wall: String(village.buildings?.find((b) => b.type === "WALL")?.level ?? 0) });
+  };
   return (
     <>
       {result && <SimResult result={result} />}
@@ -1032,6 +1053,18 @@ export function SimMode({ popup, village }) {
                 </td>
               </tr>
             ))}
+
+            {village && (
+              <tr>
+                <td />
+                <td>
+                  <a href="#" id="sim_insert_home" onClick={insertHome}>» Insert troops at home</a>
+                </td>
+                <td>
+                  <a href="#" id="sim_insert_defence" onClick={insertDefence}>» Insert this village's defence</a>
+                </td>
+              </tr>
+            )}
 
             <tr>
               <td />
