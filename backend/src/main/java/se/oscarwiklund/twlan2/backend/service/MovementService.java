@@ -119,11 +119,7 @@ public class MovementService {
             throw new MovementException("The troops are already in this village");
         }
         if (!isSameOwner(origin, target)) {
-            if (target.getOwner() == null) {
-                throw new MovementException("Support can only be sent to villages of players");
-            }
-            if ("tribe".equals(WorldSettings.get(origin.getWorld(), "supportTargets"))
-                    && !tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
+            if (!canSupport(origin, target, tribes)) {
                 throw new MovementException("You can only send support to your own villages and to villages of your tribe members");
             }
             if (requestedUnits.getOrDefault(UnitType.SNOB, 0) > 0) {
@@ -131,6 +127,17 @@ public class MovementService {
             }
         }
         return send(origin, target, requestedUnits, MovementType.SUPPORT);
+    }
+
+    /** World setting supportTargets = "tribe": support only to own villages and tribe members' (default "any": any village). */
+    public static boolean supportTribeOnly(World world) {
+        return "tribe".equals(WorldSettings.get(world, "supportTargets"));
+    }
+
+    /** Whether troops of `origin` may be stationed in `target`: checked when they are sent and again when they arrive. */
+    public static boolean canSupport(Village origin, Village target, TribeService tribes) {
+        return isSameOwner(origin, target) || !supportTribeOnly(origin.getWorld())
+                || tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld());
     }
 
     public static boolean isSameOwner(Village a, Village b) {

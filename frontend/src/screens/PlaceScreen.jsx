@@ -88,11 +88,10 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     if (target.id === village.id) {
       return setError(button === "support" ? "The troops are already in this village" : "Cannot attack your own village");
     }
-    // support goes to players' villages; on worlds set to "tribe" only to the player's own villages and their tribe's
-    // (the tribe of a village's owner comes with the village list). Same rules as MovementService.sendSupport.
+    // support goes to any village; on worlds set to "tribe" only to the player's own villages and their tribe's
+    // (the tribe of a village's owner comes with the village list). Same rule as MovementService.canSupport.
     const myTribe = villages.find((v) => v.id === village.id)?.ownerTribeId;
     const sameTribe = !!myTribe && target.ownerTribeId === myTribe;
-    if (button === "support" && !isOwn && target.ownerType === "BARBARIAN") return setError("Support can only be sent to villages of players");
     if (button === "support" && !isOwn && village.supportTribeOnly && !sameTribe) return setError("You can only send support to your own villages and to villages of your tribe members");
     if (button === "support" && !isOwn && units.snob > 0) return setError("Noblemen cannot be stationed in another player's village");
     if (button !== "support" && isOwn && !village.attackSelf) return setError("Cannot attack your own village");

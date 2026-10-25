@@ -199,12 +199,12 @@ public class TickService {
                     for (Map.Entry<UnitType, Integer> e : movement.getUnits().entrySet()) {
                         addUnits(target, e.getKey(), e.getValue());
                     }
-                } else if (own || tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
+                } else if (MovementService.canSupport(origin, target, tribes)) {
                     // still the origin village's troops (its farm, withdrawable), also between a player's own villages
                     support.station(origin, target, movement.getUnits());
                     reports.support(ReportService.SUPPORT_ARRIVED, origin, target, movement.getUnits());
                 } else {
-                    // the target changed hands (or the tribe was left) while the troops were on the road: they turn around
+                    // tribe-only world: the target changed hands (or the tribe was left) while the troops were on the road: they turn around
                     Movement back = new Movement();
                     back.setOriginVillage(target);
                     back.setTargetVillage(origin);

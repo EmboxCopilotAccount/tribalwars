@@ -9,9 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.*;
 
-// Support to another of your own villages or a tribe-mate's: the troops stay there (StationedTroops), defend it, and can be recalled by
-// their owner or sent back by the host. Leaving a tribe, conquering the host village or deleting a village sends the
-// troops home.
+// Support to another village (any village, barbarian ones included; on worlds with supportTargets = "tribe" only your own
+// and tribe-mates'): the troops stay there (StationedTroops), defend it, and can be recalled by their owner or sent back
+// by the host. Conquering the host village or deleting a village sends the troops home, and so does leaving a tribe on
+// tribe-only worlds.
 @Service
 public class SupportService {
 
@@ -166,7 +167,7 @@ public class SupportService {
     public void onMembershipEnded(TribeService.MembershipEnded event) {
         Account account = accounts.findById(event.accountId()).orElse(null);
         World world = worlds.findById(event.worldId()).orElse(null);
-        if (account == null || world == null) return;
+        if (account == null || world == null || !MovementService.supportTribeOnly(world)) return;
         for (Village v : villages.findByWorldAndOwner(world, account)) {
             for (StationedTroops g : stationed.findByHostVillage(v)) {
                 if (!isOwner(account, g.getOriginVillage())) returnTroops(g, null);

@@ -779,7 +779,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
 /* ---------------- troops mode (units.php) ---------------- */
 export function UnitsMode({ home, village, onWithdraw, onSendBack, go }) {
   const guests = village.stationed ?? []; // support stationed here (tribe-mates or our own other villages)
-  const away = village.supporting ?? []; // our troops stationed in other villages (ours or tribe-mates)
+  const away = village.supporting ?? []; // our troops stationed in other villages (any village, barbarian ones too)
   const [pickGuests, setPickGuests] = useState({});
   const [pickAway, setPickAway] = useState({});
   const [some, setSome] = useState(null); // { id, counts } while choosing how many to withdraw

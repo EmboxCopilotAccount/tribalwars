@@ -31,7 +31,7 @@ public record VillageStateDto(
         double nightBonus, // defence factor during the night hours (world setting; the simulator uses it)
         boolean destroyBuildings, // whether rams/catapults damage buildings (world setting; off = the wall stays in battle)
         boolean attackSelf, // whether this world lets a player attack their own villages
-        boolean supportTribeOnly, // world setting supportTargets = "tribe": support only to own and tribe members' villages
+        boolean supportTribeOnly, // world setting supportTargets = "tribe": support only to own and tribe members' villages (else any village)
         boolean moraleOn, // world setting morale is not "off": attacks on much smaller players are weakened
         int buildQueueSurcharge, // percent the next build order costs extra for its queue position (0 = none)
         double prodToSeconds,
