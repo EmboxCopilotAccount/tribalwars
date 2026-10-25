@@ -198,6 +198,8 @@ public class GameFacade {
                 settings.speedOf(village),
                 settings.travelSpeedOf(village),
                 WorldSettings.number(village.getWorld(), "basicDefense"),
+                WorldSettings.number(village.getWorld(), "nightBonus"),
+                WorldSettings.bool(village.getWorld(), "destroyBuildings"),
                 WorldSettings.bool(village.getWorld(), "attackSelf"),
                 !"off".equals(WorldSettings.get(village.getWorld(), "morale")),
                 (int) Math.round((queueFactor - 1) * 100),

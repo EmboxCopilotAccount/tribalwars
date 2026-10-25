@@ -28,6 +28,8 @@ public record VillageStateDto(
         double worldSpeed,
         double travelSpeed, // world speed times the world's unit speed: what troops travel at
         double basicDefense, // free defence every village has on top of its troops (world setting)
+        double nightBonus, // defence factor during the night hours (world setting; the simulator uses it)
+        boolean destroyBuildings, // whether rams/catapults damage buildings (world setting; off = the wall stays in battle)
         boolean attackSelf, // whether this world lets a player attack their own villages
         boolean moraleOn, // world setting morale is not "off": attacks on much smaller players are weakened
         int buildQueueSurcharge, // percent the next build order costs extra for its queue position (0 = none)

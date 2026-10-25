@@ -155,7 +155,7 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
   } else if (mode === "units") {
     body = <UnitsMode home={home} village={village} onWithdraw={onWithdraw} onSendBack={onSendBack} go={go} />;
   } else {
-    body = <SimMode popup={popup} />;
+    body = <SimMode popup={popup} village={village} />;
   }
 
   return (

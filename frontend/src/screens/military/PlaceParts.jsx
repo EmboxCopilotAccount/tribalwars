@@ -946,7 +946,7 @@ function SimArmyRows({ label, army }) {
   );
 }
 
-export function SimMode({ popup }) {
+export function SimMode({ popup, village }) {
   const [f, setF] = useState({ moral: "100", luck: "0" });
   const [result, setResult] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
@@ -982,6 +982,9 @@ export function SimMode({ popup }) {
               night: !!f.night,
               beliefAtt: !!f.belief_att,
               beliefDef: !!f.belief_def,
+              basicDefense: village?.basicDefense,
+              nightBonus: village?.nightBonus,
+              destroyBuildings: village?.destroyBuildings,
             })
           );
         }}
@@ -1145,7 +1148,8 @@ export function SimMode({ popup }) {
 
               <td colSpan="2">
                 <label>
-                  <input name="night" type="checkbox" checked={!!f.night} onChange={(e) => set("night", e.target.checked)} /> 100% wall bonus
+                  <input name="night" type="checkbox" checked={!!f.night} onChange={(e) => set("night", e.target.checked)} />{" "}
+                  {`Night bonus: defence x${village?.nightBonus ?? 2}`}
                 </label>
               </td>
             </tr>
@@ -1154,6 +1158,8 @@ export function SimMode({ popup }) {
               <td>Luck (from negative 25% to positive 25%)</td>
               <td colSpan="2">
                 <input name="luck" size="5" type="text" value={f.luck} onChange={(e) => set("luck", e.target.value)} />%
+                <br />
+                <span className="grey">A real battle rolls its luck at random; its report shows the luck, morale and night bonus it was fought with.</span>
               </td>
             </tr>
           </tbody>
