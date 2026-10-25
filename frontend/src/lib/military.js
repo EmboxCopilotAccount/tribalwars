@@ -266,17 +266,21 @@ export function unitsAtHome(village) {
   return out;
 }
 
-// units currently away (outgoing attacks + returning troops)
+// units currently away: on the road (outgoing attacks/support, returning troops) and stationed as support in other villages
 export function unitsAway(village) {
   const out = {};
   for (const u of UNIT_LIST) out[u.id] = 0;
-  for (const m of [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])]) {
-    if (m.type === "SUPPORT_IN" || m.type === "INCOMING_ATTACK") continue; // on their way to this village, from another one of the player's
-    for (const [type, count] of Object.entries(m.units ?? {})) {
+  const add = (units) => {
+    for (const [type, count] of Object.entries(units ?? {})) {
       const id = TYPE_TO_ID[type];
       if (id) out[id] += count;
     }
+  };
+  for (const m of [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])]) {
+    if (m.type === "SUPPORT_IN" || m.type === "INCOMING_ATTACK") continue; // on their way to this village, from another one of the player's
+    add(m.units);
   }
+  for (const army of village.supporting ?? []) add(army.units);
   return out;
 }
 
