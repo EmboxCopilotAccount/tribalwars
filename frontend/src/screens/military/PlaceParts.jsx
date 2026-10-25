@@ -26,6 +26,7 @@ import { Timer } from "../../lib/ui";
 import { favoriteIds, lastAttacked, recentTargets } from "../../lib/targets";
 import { simulate } from "./sim";
 import { clearSimPreset, peekSimPreset } from "../../lib/simPreset";
+import { templateCounts, useTroopTemplates } from "../../lib/troopTemplates";
 
 export const PLACE_MODES = [
   ["command", "Commands"],
@@ -372,6 +373,7 @@ export function TargetField({ village, villages, type, setType, text, setText, c
 export function CommandForm({ village, home, counts, setCounts, popup, target, onSubmit, onCancelCommand, go }) {
   const [selectAll, setSelectAll] = useState(false);
   const clicked = useRef("attack");
+  const [troopTemplates] = useTroopTemplates(village.worldId);
 
   const setUnit = (id, val) => setCounts({ ...counts, [id]: val });
   const insertUnit = (e, id, max) => {
@@ -489,10 +491,27 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
       </form>
       <div className="vis float_left" ref={rawStyle("margin: 4px 0 0 10px; min-width: 125px;")}>
         <h4>
-          <a href="#" onClick={(e) => e.preventDefault()}>Troop template</a>
+          <a href="#" id="templates_link" onClick={(e) => go(e, "place:templates")}>Troop template</a>
         </h4>
         <table className="vis" style={{ width: "100%" }}>
           <tbody>
+            {troopTemplates.map((t, i) => (
+              <tr key={t.name} className={i % 2 ? "row_b" : "row_a"}>
+                <td>
+                  <a
+                    href="#"
+                    className="troop_template"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectAll(false);
+                      setCounts(templateCounts(t, home));
+                    }}
+                  >
+                    {t.name}
+                  </a>
+                </td>
+              </tr>
+            ))}
             <tr className="row_b">
               <td>
                 <a id="selectAllUnits" href="#" onClick={doSelectAll}>

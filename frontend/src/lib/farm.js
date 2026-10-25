@@ -1,5 +1,6 @@
 /* Farm assistant helpers: premade armies ("templates" A, B, C, ... up to Z), the target filters and which villages are worth a raid.
-   The original TWLan has no such page. The setup is one object per world, {templates, settings, hidden}: it is read from
+   The original TWLan has no such page. The setup is one object per world, {templates, settings, hidden, troopTemplates}
+   (troopTemplates: the rally point's named troop templates, place:templates): it is read from
    the browser's localStorage (so the map's click menu can use it synchronously) and mirrored to the server
    (/api/farm), which is how it follows you to another browser. Sending itself goes through the normal attack command. */
 import { api } from "../api";
@@ -50,7 +51,19 @@ export function normalizeConfig(raw) {
     templates: Object.fromEntries(TEMPLATE_KEYS.map((n) => [n, cleanUnits(raw?.templates?.[n])])),
     settings: { ...DEFAULT_SETTINGS, ...(raw?.settings ?? {}) },
     hidden,
+    troopTemplates: cleanTroopTemplates(raw?.troopTemplates),
   };
+}
+
+export const MAX_TROOP_TEMPLATES = 20; // the whole setup must stay under the server's 20000 characters (FarmService)
+export const TROOP_TEMPLATE_NAME_MAX = 30;
+/** [{name, units: {unitId: n}}]: named, with troops, at most MAX_TROOP_TEMPLATES */
+export function cleanTroopTemplates(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((t) => ({ name: String(t?.name ?? "").trim().slice(0, TROOP_TEMPLATE_NAME_MAX), units: cleanUnits(t?.units) }))
+    .filter((t) => t.name && Object.keys(t.units).length > 0)
+    .slice(0, MAX_TROOP_TEMPLATES);
 }
 
 function readConfig(worldId) {
@@ -64,7 +77,7 @@ function readConfig(worldId) {
 }
 
 const hasData = (c) =>
-  TEMPLATE_KEYS.some((n) => Object.keys(c.templates[n]).length > 0) || c.hidden.length > 0
+  TEMPLATE_KEYS.some((n) => Object.keys(c.templates[n]).length > 0) || c.hidden.length > 0 || c.troopTemplates.length > 0
   || Object.keys(DEFAULT_SETTINGS).some((k) => c.settings[k] !== DEFAULT_SETTINGS[k]);
 
 // ---- mirroring to the server ----
@@ -124,6 +137,8 @@ export const loadSettings = (worldId) => readConfig(worldId).settings;
 export const saveSettings = (worldId, settings) => update(worldId, { settings });
 export const loadHidden = (worldId) => readConfig(worldId).hidden;
 export const saveHidden = (worldId, hidden) => update(worldId, { hidden });
+export const loadTroopTemplates = (worldId) => readConfig(worldId).troopTemplates;
+export const saveTroopTemplates = (worldId, troopTemplates) => update(worldId, { troopTemplates: cleanTroopTemplates(troopTemplates) });
 
 /** template ({unitId: n}) -> the backend's {SPEAR: n} */
 export function toBackendUnits(template) {

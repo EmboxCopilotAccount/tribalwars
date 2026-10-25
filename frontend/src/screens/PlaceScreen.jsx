@@ -8,6 +8,7 @@ import { CommandConfirm, CommandForm, PlaceHeader, SimMode, TargetField, UnitsMo
 import { pushRecent } from "../lib/targets";
 import { takeCommandPreset } from "../lib/commandPreset";
 import { FarmAssistant } from "./military/FarmAssistant";
+import { TroopTemplates } from "./military/TroopTemplates";
 import { useUnitPopup } from "./military/UnitPopup";
 
 const MODE_IDS = ["command", "secrets", "units", "sim", "templates", "farm"];
@@ -114,10 +115,10 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
 
   const errorBox = error && <div className="error_box">{error}</div>;
 
-  if (mode === "secrets" || mode === "templates") {
+  if (mode === "secrets") {
     return (
       <>
-        <PreErrorBox text={mode === "secrets" ? "Secrets not implemented" : "Templates not implemented"} />
+        <PreErrorBox text="Secrets not implemented" />
         {popup.node}
       </>
     );
@@ -166,6 +167,8 @@ export function PlaceScreen({ village, villages = [], reports = [], onAttack, on
     );
   } else if (mode === "farm") {
     body = <FarmAssistant village={village} villages={villages} reports={reports} home={home} onAttack={onAttack} busy={busy} go={go} />;
+  } else if (mode === "templates") {
+    body = <TroopTemplates village={village} home={home} />;
   } else if (mode === "units") {
     body = <UnitsMode home={home} village={village} onWithdraw={onWithdraw} onSendBack={onSendBack} go={go} />;
   } else {
