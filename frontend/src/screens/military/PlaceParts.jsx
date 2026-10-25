@@ -886,10 +886,6 @@ const KNIGHT_ITEMS = [
   ["catapult", "Aletheia's Bonfire"],
   ["snob", "Vasco's Scepter"],
 ];
-const flagOptions = (word) => [
-  "None",
-  ...Array.from({ length: 9 }, (_, i) => `+${i + 2}% ${word}`),
-];
 
 function SimResult({ result }) {
   return (
@@ -1145,31 +1141,6 @@ export function SimMode({ popup, village }) {
                   {KNIGHT_ITEMS.map(([v, label]) => (
                     <option key={v} value={v}>
                       {label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-
-            {/* TODO, not implemented yet: */}
-            <tr>
-              <td>Flag</td>
-
-              <td>
-                <select name="att_flag">
-                  {flagOptions("Attack strength").map((t, i) => (
-                    <option key={i} value={i}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </td>
-
-              <td>
-                <select name="def_flag">
-                  {flagOptions("Defense strength").map((t, i) => (
-                    <option key={i} value={i}>
-                      {t}
                     </option>
                   ))}
                 </select>
