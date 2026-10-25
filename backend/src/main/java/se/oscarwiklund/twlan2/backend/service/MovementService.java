@@ -119,7 +119,11 @@ public class MovementService {
             throw new MovementException("The troops are already in this village");
         }
         if (!isSameOwner(origin, target)) {
-            if (!tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
+            if (target.getOwner() == null) {
+                throw new MovementException("Support can only be sent to villages of players");
+            }
+            if ("tribe".equals(WorldSettings.get(origin.getWorld(), "supportTargets"))
+                    && !tribes.sameTribe(origin.getOwner(), target.getOwner(), origin.getWorld())) {
                 throw new MovementException("You can only send support to your own villages and to villages of your tribe members");
             }
             if (requestedUnits.getOrDefault(UnitType.SNOB, 0) > 0) {

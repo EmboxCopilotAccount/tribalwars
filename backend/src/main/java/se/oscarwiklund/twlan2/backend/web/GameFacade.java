@@ -201,6 +201,7 @@ public class GameFacade {
                 WorldSettings.number(village.getWorld(), "nightBonus"),
                 WorldSettings.bool(village.getWorld(), "destroyBuildings"),
                 WorldSettings.bool(village.getWorld(), "attackSelf"),
+                "tribe".equals(WorldSettings.get(village.getWorld(), "supportTargets")),
                 !"off".equals(WorldSettings.get(village.getWorld(), "morale")),
                 (int) Math.round((queueFactor - 1) * 100),
                 WorldSettings.number(village.getWorld(), "prodToSeconds"), WorldSettings.number(village.getWorld(), "prodToMinutes"),
