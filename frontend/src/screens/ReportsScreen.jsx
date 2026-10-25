@@ -16,6 +16,7 @@ import {
 } from "../lib/military";
 import { useUnitPopup } from "./military/UnitPopup";
 import { isBattle, reportLoot, scoutsOnly } from "../lib/farm";
+import { setSimPreset, simForm } from "../lib/simPreset";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -598,6 +599,12 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
   const idx = reports.findIndex((x) => x.id === r.id);
   const next = reports[idx + 1] ?? r;
   const subject = `${attackerName(r)} (${fromName}) attacks ${toName}`;
+  // the battle as it was fought (luck, morale, night bonus, wall), so the simulator gives the report's result;
+  // the defenders only when the report shows them
+  const toSim = (e, att, def, wall) => {
+    setSimPreset(simForm({ att, def: showDefenderTroops ? def : {}, wall, morale: r.morale, luck, night: (r.nightBonus ?? 100) > 100 }));
+    go(e, "place:sim");
+  };
   const exportCode = useMemo(() => {
     try {
       return btoa(JSON.stringify(r));
@@ -835,12 +842,11 @@ function ReportView({ report: r, reports, villages, go, popup, onDelete }) {
                       </table>
                       {r.spy && <SpyInfo spy={r.spy} popup={popup} />}
                       <br />
-                      {/* TODO below */}
-                      <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
+                      <a id="sim_insert_all" href="#" onClick={(e) => toSim(e, beforeA, beforeD, r.wallBefore)}>
                         » Insert troops into the simulator
                       </a>
                       <br />
-                      <a style={{ display: "none" }} href="#" onClick={(e) => e.preventDefault()}>
+                      <a id="sim_insert_survivors" href="#" onClick={(e) => toSim(e, afterA, afterD, r.wallAfter ?? r.wallBefore)}>
                         » Insert surviving troops into the simulator
                       </a>
                       <hr />

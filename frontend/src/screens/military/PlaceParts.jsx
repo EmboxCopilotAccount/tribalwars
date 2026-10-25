@@ -25,6 +25,7 @@ import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
 import { favoriteIds, lastAttacked, recentTargets } from "../../lib/targets";
 import { simulate } from "./sim";
+import { clearSimPreset, peekSimPreset } from "../../lib/simPreset";
 
 export const PLACE_MODES = [
   ["command", "Commands"],
@@ -966,9 +967,33 @@ function MoraleCalc({ village, onUse }) {
 }
 
 export function SimMode({ popup, village }) {
-  const [f, setF] = useState({ moral: "100", luck: "0" });
+  const run = (form) => {
+    const att = {};
+    const def = {};
+    for (const u of UNIT_LIST) {
+      att[u.id] = form["att_" + u.id];
+      def[u.id] = form["def_" + u.id];
+    }
+    return simulate({
+      att,
+      def,
+      wall: form.def_wall,
+      moral: form.moral,
+      luck: form.luck,
+      night: !!form.night,
+      beliefAtt: !!form.belief_att,
+      beliefDef: !!form.belief_def,
+      basicDefense: village?.basicDefense,
+      nightBonus: village?.nightBonus,
+      destroyBuildings: village?.destroyBuildings,
+    });
+  };
+  // a report's "» Insert troops into the simulator" leaves the battle here (lib/simPreset.js)
+  const [f, setF] = useState(() => peekSimPreset() ?? { moral: "100", luck: "0" });
+  useEffect(() => clearSimPreset(), []);
+  // a battle handed over from a report is calculated at once
+  const [result, setResult] = useState(() => (peekSimPreset() ? run(peekSimPreset()) : null));
   const [moraleCalc, setMoraleCalc] = useState(false);
-  const [result, setResult] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const resetSide = (prefix) =>
     setF((s) => {
@@ -1006,27 +1031,7 @@ export function SimMode({ popup, village }) {
         name="simulator"
         onSubmit={(e) => {
           e.preventDefault();
-          const att = {};
-          const def = {};
-          for (const u of UNIT_LIST) {
-            att[u.id] = f["att_" + u.id];
-            def[u.id] = f["def_" + u.id];
-          }
-          setResult(
-            simulate({
-              att,
-              def,
-              wall: f.def_wall,
-              moral: f.moral,
-              luck: f.luck,
-              night: !!f.night,
-              beliefAtt: !!f.belief_att,
-              beliefDef: !!f.belief_def,
-              basicDefense: village?.basicDefense,
-              nightBonus: village?.nightBonus,
-              destroyBuildings: village?.destroyBuildings,
-            })
-          );
+          setResult(run(f));
         }}
       >
         <input name="simulate" type="hidden" />
