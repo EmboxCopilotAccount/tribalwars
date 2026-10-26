@@ -3,6 +3,7 @@ package se.oscarwiklund.twlan2.backend.service.npc;
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.NpcGrudgeRepository;
 import se.oscarwiklund.twlan2.backend.repo.NpcIntelRepository;
+import se.oscarwiklund.twlan2.backend.service.WorldSettings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,7 +94,7 @@ public class NpcIntelService {
     // Scouts made it through: resources (spy level 1), buildings (2: the wall) and the garrison at home (3).
     @Transactional
     public void spy(World world, Account npc, Village target, int level, Map<UnitType, Integer> homeTroops, Integer wall,
-                    double wood, double clay, double iron) {
+                    double wood, double clay, double iron, int scoutsSent) {
         NpcIntel i = row(world, npc, target);
         i.setSource("SCOUT");
         i.setSeenAt(Instant.now());
@@ -101,7 +102,42 @@ public class NpcIntelService {
         if (level >= 2 && wall != null) i.setWall(wall);
         if (level >= 3) i.setTroops(format(homeTroops));
         else if (i.getTroops() != null) i.setTroops(null); // no garrison seen: not enough to attack on
+        scoutRun(world, i, level >= 3, scoutsSent);
         intel.save(i);
+    }
+
+    // Every scout died (or too few came through to see anything): a failed run.
+    @Transactional
+    public void scoutsLost(World world, Account npc, Village target, int scoutsSent) {
+        NpcIntel i = row(world, npc, target);
+        scoutRun(world, i, false, scoutsSent);
+        intel.save(i);
+    }
+
+    // Counts scouting runs that saw no garrison in a row; the second one pauses scouting the village for the world's
+    // warScoutPauseHours (NpcMilitary honours the pause for war targets). A run that saw the garrison ends both.
+    private static void scoutRun(World world, NpcIntel i, boolean sawGarrison, int scoutsSent) {
+        i.setScoutsSent(scoutsSent);
+        if (sawGarrison) {
+            i.setFailedScouts(0);
+            i.setScoutPausedUntil(null);
+            return;
+        }
+        i.setFailedScouts(i.getFailedScouts() + 1);
+        if (i.getFailedScouts() >= 2 && i.getScoutPausedUntil() == null) {
+            double hours = Math.max(0, WorldSettings.number(world, "warScoutPauseHours"));
+            i.setScoutPausedUntil(Instant.now().plusMillis(Math.round(hours * 3_600_000)));
+        }
+    }
+
+    // The scouting pause is over: start counting failed runs afresh.
+    @Transactional
+    public void resumeScouting(Long accountId, Long targetVillageId) {
+        intel.findByAccountIdAndTargetVillageId(accountId, targetVillageId).ifPresent(i -> {
+            i.setFailedScouts(0);
+            i.setScoutPausedUntil(null);
+            intel.save(i);
+        });
     }
 
     // A battle at the target: after a win its garrison is gone; after a loss the NPC knows less than before.
@@ -117,12 +153,14 @@ public class NpcIntelService {
             i.setTroops("");
             i.setWall(wallAfter);
             i.setLastResult("WON");
+            i.setLossStreak(0);
             i.setLastLoot(loot);
             // the resources it saw are stale now (it took some): forget them, a raid estimate uses the loot
             i.setWood(null); i.setClay(null); i.setIron(null);
         } else {
             i.setLastResult("LOST");
             i.setLosses(i.getLosses() + 1);
+            i.setLossStreak(i.getLossStreak() + 1);
             i.setTroops(null); // the old picture was wrong
         }
         intel.save(i);

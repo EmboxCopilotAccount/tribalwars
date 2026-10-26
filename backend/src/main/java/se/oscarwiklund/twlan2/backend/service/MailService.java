@@ -119,6 +119,13 @@ public class MailService {
         return contacts.existsByAccountIdAndWorldIdAndContactIdAndBlocked(owner.getId(), world.getId(), sender.getId(), true);
     }
 
+    // False when `recipient` has blocked `sender` (send() would refuse): game messages check this first, since a refusal
+    // inside a bigger transaction would roll all of it back.
+    @Transactional(readOnly = true)
+    public boolean accepts(Account recipient, World world, Account sender) {
+        return !blocks(recipient, world, sender);
+    }
+
     // ---- reading ---------------------------------------------------------------------------------------------------
 
     @Transactional(readOnly = true)

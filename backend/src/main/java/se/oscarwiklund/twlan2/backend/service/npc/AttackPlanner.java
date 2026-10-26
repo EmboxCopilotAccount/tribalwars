@@ -60,19 +60,44 @@ public final class AttackPlanner {
             carry = carry(send);
         }
 
-        int rams = army.getOrDefault(UnitType.RAM, 0);
-        if (withRams && wall > 0 && rams > 0) {
-            int use = rams;
-            for (int r = 1; r <= rams; r++) {
-                if (BattleCalculator.levelsDestroyed(r, wall) >= wall) { use = r; break; }
-            }
-            send.put(UnitType.RAM, use);
-        }
+        if (withRams) addRams(send, army, wall);
 
         var expected = BattleCalculator.fight(send, defenders, wall, morale, 0, night, basicDefense);
         double sentPop = pop(send);
         double lossShare = sentPop <= 0 ? 0 : pop(expected.attackerLosses()) / sentPop;
         return new Plan(send, carry, lossShare, expected.attackPower(), expected.defensePower());
+    }
+
+    // The rams (of those in `army`) it takes to break the wall, added to `send`.
+    private static void addRams(Map<UnitType, Integer> send, Map<UnitType, Integer> army, int wall) {
+        int rams = army.getOrDefault(UnitType.RAM, 0);
+        if (wall <= 0 || rams <= 0) return;
+        int use = rams;
+        for (int r = 1; r <= rams; r++) {
+            if (BattleCalculator.levelsDestroyed(r, wall) >= wall) { use = r; break; }
+        }
+        send.put(UnitType.RAM, use);
+    }
+
+    // At war, when no plan() wins safely: the whole army (its fighters, plus rams for the wall) goes anyway if on an
+    // average day it kills at least `minKillShare` of the defenders' population, or its attack is at least
+    // `minPowerShare` of the defence (attrition: a strong player then faces real armies, not nothing). Null otherwise.
+    public static Plan assault(Map<UnitType, Integer> army, Map<UnitType, Integer> defenders, int wall, double basicDefense,
+                               double night, double morale, double minKillShare, double minPowerShare) {
+        Map<UnitType, Integer> send = new EnumMap<>(UnitType.class);
+        for (UnitType t : FIGHTERS) {
+            int n = army.getOrDefault(t, 0);
+            if (n > 0) send.put(t, n);
+        }
+        if (send.isEmpty()) return null;
+        addRams(send, army, wall);
+        var expected = BattleCalculator.fight(send, defenders, wall, morale, 0, night, basicDefense);
+        double defenderPop = pop(defenders);
+        double killed = defenderPop <= 0 ? 1 : pop(expected.defenderLosses()) / defenderPop;
+        if (killed < minKillShare && expected.attackPower() < minPowerShare * expected.defensePower()) return null;
+        double sentPop = pop(send);
+        double lossShare = sentPop <= 0 ? 0 : pop(expected.attackerLosses()) / sentPop;
+        return new Plan(send, carry(send), lossShare, expected.attackPower(), expected.defensePower());
     }
 
     private static boolean acceptable(Map<UnitType, Integer> send, Map<UnitType, Integer> seen, Map<UnitType, Integer> worstDefence, int wall,

@@ -35,6 +35,13 @@ public class NpcIntel {
     private int lastLoot;
     private int raids;
     private int losses;
+    // Added later (#118), so nullable: ddl-auto=update cannot add a NOT NULL column without a default to a filled table.
+    // Lost battles in a row here (a win resets it), consecutive scouting runs that saw no garrison (a run that saw it
+    // resets it), the scouts the last run sent, and until when scouting this village is paused after repeated failures.
+    private Integer lossStreak;
+    private Integer failedScouts;
+    private Integer scoutsSent;
+    private Instant scoutPausedUntil;
 
     public Long getId() { return id; }
     public Long getWorldId() { return worldId; }
@@ -67,4 +74,12 @@ public class NpcIntel {
     public void setRaids(int raids) { this.raids = raids; }
     public int getLosses() { return losses; }
     public void setLosses(int losses) { this.losses = losses; }
+    public int getLossStreak() { return lossStreak == null ? 0 : lossStreak; }
+    public void setLossStreak(int lossStreak) { this.lossStreak = lossStreak; }
+    public int getFailedScouts() { return failedScouts == null ? 0 : failedScouts; }
+    public void setFailedScouts(int failedScouts) { this.failedScouts = failedScouts; }
+    public int getScoutsSent() { return scoutsSent == null ? 0 : scoutsSent; }
+    public void setScoutsSent(int scoutsSent) { this.scoutsSent = scoutsSent; }
+    public Instant getScoutPausedUntil() { return scoutPausedUntil; }
+    public void setScoutPausedUntil(Instant scoutPausedUntil) { this.scoutPausedUntil = scoutPausedUntil; }
 }

@@ -2,6 +2,7 @@ package se.oscarwiklund.twlan2.backend.web;
 
 import se.oscarwiklund.twlan2.backend.domain.Account;
 import se.oscarwiklund.twlan2.backend.service.AuthService;
+import se.oscarwiklund.twlan2.backend.service.PlayerWarService;
 import se.oscarwiklund.twlan2.backend.service.ProfileService;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,9 +12,11 @@ public class ProfileController {
     private final ProfileService profiles;
     private final GameFacade gameFacade;
     private final se.oscarwiklund.twlan2.backend.service.StatsService stats;
+    private final PlayerWarService wars;
 
-    public ProfileController(ProfileService profiles, GameFacade gameFacade, se.oscarwiklund.twlan2.backend.service.StatsService stats) {
+    public ProfileController(ProfileService profiles, GameFacade gameFacade, se.oscarwiklund.twlan2.backend.service.StatsService stats, PlayerWarService wars) {
         this.stats = stats;
+        this.wars = wars;
         this.profiles = profiles;
         this.gameFacade = gameFacade;
     }
@@ -29,6 +32,24 @@ public class ProfileController {
     public ProfileService.Profile profile(@PathVariable String name) {
         Account viewer = me();
         return profiles.profile("me".equals(name) ? viewer.getUsername() : name, viewer, gameFacade.currentWorld());
+    }
+
+    // War on an NPC (#118): declared here or by attacking it; peace only after the world's warPeaceHours (409 before).
+    // Both answer with the NPC's refreshed profile.
+    @PostMapping("/api/players/{name}/war")
+    public ProfileService.Profile declareWar(@PathVariable String name) {
+        Account viewer = me();
+        var world = gameFacade.currentWorld();
+        wars.declare(viewer, name, world);
+        return profiles.profile(name, viewer, world);
+    }
+
+    @DeleteMapping("/api/players/{name}/war")
+    public ProfileService.Profile makePeace(@PathVariable String name) {
+        Account viewer = me();
+        var world = gameFacade.currentWorld();
+        wars.makePeace(viewer, name, world);
+        return profiles.profile(name, viewer, world);
     }
 
     @PutMapping("/api/profile")

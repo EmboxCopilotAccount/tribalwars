@@ -178,9 +178,11 @@ public class NpcEconomy {
     // ---- recruiting ------------------------------------------------------------------------------------------------
 
     // Trains the unit that brings the army closest to the archetype's mix, in the recruit building with room in its queue,
-    // until the army takes its share of the farm. `away` are the troops out on the road (they count as the army).
+    // until the army takes its share of the farm. `away` are the troops out on the road (they count as the army). atWar: the
+    // NPC is at war with a player, so it aims for the more offensive NpcArmy.warMix.
     @Transactional(noRollbackFor = TrainService.TrainException.class)
-    public void recruit(Village v, NpcArchetype archetype, double skill, NpcDifficulty d, Snapshot s, Collection<Movement> away, boolean threatened, Random rnd) {
+    public void recruit(Village v, NpcArchetype archetype, double skill, NpcDifficulty d, Snapshot s, Collection<Movement> away, boolean threatened,
+                        boolean atWar, Random rnd) {
         if (!d.keepBusy() && rnd.nextDouble() > 0.6) return;
         EnumMap<UnitType, Integer> popByType = new EnumMap<>(UnitType.class);
         int scouts = 0;
@@ -210,7 +212,7 @@ public class NpcEconomy {
             if (!t.isRegularTroop() || s.level(t.recruitBuilding) < 1 || queued.getOrDefault(t.recruitBuilding, 0) >= queueRoom) continue;
             if (t.requirementsMet(s::level) && (!threatened || DodgeDecision.DEFENDERS.contains(t))) available.add(t); // under attack: defenders only
         }
-        UnitType type = NpcArmy.choose(archetype, available, popByType, scouts, d.scouts(), targetPop);
+        UnitType type = NpcArmy.choose(archetype, available, popByType, scouts, d.scouts(), targetPop, atWar);
         if (type == null) return;
 
         int freePop = popCap - s.popNow - s.popPending;

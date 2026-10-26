@@ -54,6 +54,7 @@ public class AdminService {
     private final se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel;
     private final ResearchService research;
     private final VictoryService victoryService;
+    private final PlayerWarService playerWars;
 
     public AdminService(WorldRepository worlds, VillageRepository villages, AccountRepository accounts,
                         AuthSessionRepository sessions, BuildingRepository buildings, BuildQueueItemRepository buildQueue,
@@ -61,8 +62,9 @@ public class AdminService {
                         CombatReportRepository reports, WorldService worldService, VillageService villageService,
                         JdbcTemplate jdbc, AchievementService achievements, StatsService stats,
                         NobleService nobles, FarmService farm, ResearchService research, TribeService tribes, SupportService support, GroupService groups, MarketService market, MailService mail, NpcProfiles npcProfiles, NpcLogService npcLog,
-                        se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel, VictoryService victoryService) {
+                        se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel, VictoryService victoryService, PlayerWarService playerWars) {
         this.victoryService = victoryService;
+        this.playerWars = playerWars;
         this.npcIntel = npcIntel;
         this.npcProfiles = npcProfiles;
         this.npcLog = npcLog;
@@ -211,6 +213,7 @@ public class AdminService {
         mail.deleteWorldData(w.getId());
         npcLog.deleteWorldData(w.getId());
         npcIntel.deleteWorldData(w.getId());
+        playerWars.deleteWorldData(w.getId());
         for (Village v : villages.findByWorld(w)) deleteVillageData(v);
         reports.deleteAll(reports.findByWorldIdOrderByOccurredAtDesc(w.getId()));
         // NPC accounts that only lived in this world go with it
@@ -311,7 +314,10 @@ public class AdminService {
             });
             default -> throw new IllegalArgumentException("Unknown village handling: " + handling);
         }
-        if (villages.findByWorldAndOwner(w, account).isEmpty()) tribes.leaveWorld(account, w);
+        if (villages.findByWorldAndOwner(w, account).isEmpty()) {
+            tribes.leaveWorld(account, w);
+            playerWars.leaveWorld(w.getId(), account.getId());
+        }
         if (account.isNpc() && villages.findByOwner(account).isEmpty()) { npcProfiles.deleteAccountData(account.getId()); npcLog.deleteAccountData(account.getId()); npcIntel.deleteAccountData(account.getId()); accounts.delete(account); }
         return new RemovePlayerResult(owned.size());
     }
@@ -634,6 +640,7 @@ public class AdminService {
         npcProfiles.deleteAccountData(a.getId());
         npcLog.deleteAccountData(a.getId());
         npcIntel.deleteAccountData(a.getId());
+        playerWars.deleteAccountData(a.getId());
         accounts.delete(a);
     }
 

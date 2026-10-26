@@ -123,6 +123,9 @@ export const api = {
   train: (type, count) => request("/village/train", { method: "POST", body: JSON.stringify({ type, count }) }),
   decommission: (type, count) => request("/village/decommission", { method: "POST", body: JSON.stringify({ type, count }) }),
   player: (name) => request("/players/" + encodeURIComponent(name)),
+  // #118: war on an NPC (and its tribe); peace only after the world's warPeaceHours (409 with peaceFrom before)
+  declareWar: (name) => request("/players/" + encodeURIComponent(name) + "/war", { method: "POST" }),
+  makePeace: (name) => request("/players/" + encodeURIComponent(name) + "/war", { method: "DELETE" }),
   playerStats: (name, range) => request("/players/" + encodeURIComponent(name) + "/stats?range=" + range),
   editProfile: (body) => request("/profile", { method: "PUT", body: JSON.stringify(body) }),
   achievements: () => request("/achievements"),

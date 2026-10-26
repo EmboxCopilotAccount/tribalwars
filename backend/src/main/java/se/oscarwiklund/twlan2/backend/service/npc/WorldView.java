@@ -24,6 +24,9 @@ public final class WorldView {
     private final Map<Long, List<Movement>> byTarget = new HashMap<>();
     private final Map<Long, List<Movement>> byOrigin = new HashMap<>();
     private Map<Long, Map<Long, TribeRelation.Kind>> relations = Map.of();
+    private final Map<Long, List<Village>> byOwner = new HashMap<>();
+    // NPC account id -> the players it is at war with (PlayerWarService.enemiesByNpc, tribe-mates included).
+    private Map<Long, Set<Long>> enemiesByNpc = Map.of();
     // Villages by 10x10 field cell, so "who is within N fields" does not scan the whole world (worlds get tens of thousands of villages).
     private static final int CELL = 10;
     private final Map<Long, List<Village>> grid = new HashMap<>();
@@ -34,7 +37,10 @@ public final class WorldView {
         this.tribeByAccount = tribeByAccount;
         for (Village v : villages) {
             byId.put(v.getId(), v);
-            if (v.getOwner() != null) villagesOf.merge(v.getOwner().getId(), 1, Integer::sum);
+            if (v.getOwner() != null) {
+                villagesOf.merge(v.getOwner().getId(), 1, Integer::sum);
+                byOwner.computeIfAbsent(v.getOwner().getId(), k -> new ArrayList<>()).add(v);
+            }
             grid.computeIfAbsent(cell(Math.floorDiv(v.getX(), CELL), Math.floorDiv(v.getY(), CELL)), k -> new ArrayList<>()).add(v);
         }
     }
@@ -107,4 +113,21 @@ public final class WorldView {
     public int villageCount(Account owner) { return owner == null ? 0 : villagesOf.getOrDefault(owner.getId(), 0); }
 
     public Tribe tribeOf(Account owner) { return owner == null ? null : tribeByAccount.get(owner.getId()); }
+
+    // ---- wars between players and NPCs ----
+
+    public void wars(Map<Long, Set<Long>> enemiesByNpc) { this.enemiesByNpc = enemiesByNpc == null ? Map.of() : enemiesByNpc; }
+
+    public boolean atWar(Long npcId, Long playerId) { return enemiesByNpc.getOrDefault(npcId, Set.of()).contains(playerId); }
+
+    public boolean hasEnemies(Long npcId) { return !enemiesByNpc.getOrDefault(npcId, Set.of()).isEmpty(); }
+
+    // Every village of every player the NPC is at war with, at any distance.
+    public List<Village> warTargets(Long npcId) {
+        Set<Long> enemies = enemiesByNpc.getOrDefault(npcId, Set.of());
+        if (enemies.isEmpty()) return List.of();
+        List<Village> out = new ArrayList<>();
+        for (Long e : enemies) out.addAll(byOwner.getOrDefault(e, List.of()));
+        return out;
+    }
 }

@@ -37,6 +37,14 @@ public final class NpcArmy {
         return MIX.get(archetype);
     }
 
+    // At war (#118) the army leans to offence: the archetype's own mix blended half and half with the raider's.
+    public static Map<UnitType, Double> warMix(NpcArchetype archetype) {
+        Map<UnitType, Double> m = new EnumMap<>(UnitType.class);
+        mix(archetype).forEach((t, share) -> m.merge(t, share / 2, Double::sum));
+        mix(NpcArchetype.RAIDER).forEach((t, share) -> m.merge(t, share / 2, Double::sum));
+        return m;
+    }
+
     // The share of the farm's capacity the standing army should take up.
     public static double armyShare(NpcArchetype archetype, double skill) {
         double base = switch (archetype) {
@@ -64,9 +72,15 @@ public final class NpcArmy {
     // is already full of one type still trains the others. Null if nothing is missing.
     public static UnitType choose(NpcArchetype archetype, Set<UnitType> available, Map<UnitType, Integer> popByType, int scoutsHave,
                                   boolean wantScouts, double targetPop) {
+        return choose(archetype, available, popByType, scoutsHave, wantScouts, targetPop, false);
+    }
+
+    // As above; atWar: aim for warMix() instead of the archetype's own mix.
+    public static UnitType choose(NpcArchetype archetype, Set<UnitType> available, Map<UnitType, Integer> popByType, int scoutsHave,
+                                  boolean wantScouts, double targetPop, boolean atWar) {
         if (available.isEmpty()) return null;
         if (wantScouts && available.contains(SCOUT) && scoutsHave < scoutFloor(archetype)) return SCOUT;
-        Map<UnitType, Double> target = mix(archetype);
+        Map<UnitType, Double> target = atWar ? warMix(archetype) : mix(archetype);
         double weightSum = 0;
         for (UnitType t : available) weightSum += target.getOrDefault(t, 0.02);
         UnitType best = null;

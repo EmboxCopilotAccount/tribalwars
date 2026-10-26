@@ -15,9 +15,17 @@ public class ProfileService {
 
     public record VillageRow(Long id, String name, int x, int y, int points) {}
     public record AchievementRow(String key, String name, String icon, int level, int maxLevel) {}
+    // A war with an NPC (#118). opponent: the NPC; declaredOn: the NPC it was declared on (a tribe-mate of the opponent when
+    // viaTribe); declaredBy: PLAYER (the profile button) or ATTACK (the player's attack started it); pending: no attack of
+    // it has landed yet; tribeId/tribeName: the opponent's tribe.
+    public record WarInfo(String opponent, String declaredOn, boolean viaTribe, String declaredBy, Instant startedAt, Instant peaceFrom,
+                          boolean pending, Long tribeId, String tribeName) {}
+    // war: the viewer's war with this NPC (null: none); canDeclareWar: the viewer may declare war on it; wars: the
+    // viewer's own wars (own profile only); npcsAttack: the world's NPC difficulty lets NPCs attack at all.
     public record Profile(String name, boolean npc, boolean own, boolean admin, int rank, int players, int points, List<VillageRow> villages,
                           long kills, Instant memberSince, String description, String location, String birthday,
-                          List<AchievementRow> achievements, Long tribeId, String tribeName, String tribeTag, String tribeTitle) {}
+                          List<AchievementRow> achievements, Long tribeId, String tribeName, String tribeTag, String tribeTitle,
+                          WarInfo war, boolean canDeclareWar, List<WarInfo> wars, boolean npcsAttack, double warPeaceHours) {}
 
     private final WorldPoints worldPoints;
     private final AccountRepository accounts;
@@ -29,10 +37,12 @@ public class ProfileService {
     private final TribeService tribes;
     private final TribeRepository tribeRepository;
     private final TribeMemberRepository tribeMembers;
+    private final PlayerWarService playerWars;
 
     public ProfileService(WorldPoints worldPoints, TribeService tribes, TribeRepository tribeRepository, TribeMemberRepository tribeMembers, AccountRepository accounts, VillageRepository villages, BuildingRepository buildings,
-                          PlayerProfileRepository profiles, AchievementCounterRepository counters, AchievementService achievements) {
+                          PlayerProfileRepository profiles, AchievementCounterRepository counters, AchievementService achievements, PlayerWarService playerWars) {
         this.worldPoints = worldPoints;
+        this.playerWars = playerWars;
         this.tribes = tribes;
         this.tribeRepository = tribeRepository;
         this.tribeMembers = tribeMembers;
@@ -72,10 +82,41 @@ public class ProfileService {
         Tribe tribe = tm == null ? null : tribeRepository.findById(tm.getTribeId()).orElse(null);
         boolean sameTribe = tribe != null && viewer != null && tribes.sameTribe(viewer, account, world);
         String title = tm != null && (sameTribe || tm.isTitleOutside()) ? tm.getTitle() : "";
-        return new Profile(account.getUsername(), account.isNpc(), viewer != null && viewer.getId().equals(account.getId()), account.isAdmin(),
+        boolean own = viewer != null && viewer.getId().equals(account.getId());
+
+        // wars with NPCs: the viewer's war with this NPC, or (own profile) all the viewer's wars
+        WarInfo war = null;
+        boolean canDeclareWar = false;
+        List<WarInfo> wars = List.of();
+        if (viewer != null && !viewer.isNpc() && account.isNpc()) {
+            PlayerWarService.Standing s = playerWars.standing(viewer, account, world);
+            if (s != null) war = warInfo(s.war(), account, s.declaredOn(), tribe, world);
+            canDeclareWar = s == null && !sameTribe && !villages.findByWorldAndOwner(world, viewer).isEmpty();
+        }
+        if (own && !account.isNpc()) {
+            List<PlayerWar> rows = playerWars.warsOf(account, world);
+            Map<Long, Account> npcs = new HashMap<>();
+            for (Account a : accounts.findAllById(rows.stream().map(PlayerWar::getNpcAccountId).toList())) npcs.put(a.getId(), a);
+            Map<Long, Tribe> tribeOf = rows.isEmpty() ? Map.of() : tribes.tribeByAccount(world);
+            List<WarInfo> list = new ArrayList<>();
+            for (PlayerWar w : rows) {
+                Account npc = npcs.get(w.getNpcAccountId());
+                if (npc != null) list.add(warInfo(w, npc, npc, tribeOf.get(npc.getId()), world));
+            }
+            wars = list;
+        }
+        return new Profile(account.getUsername(), account.isNpc(), own, account.isAdmin(),
                 rank, totals.size(), points, mine, kills, account.getCreatedAt(),
                 p == null ? "" : p.getDescription(), p == null ? "" : p.getLocation(), p == null ? "" : p.getBirthday(), earned,
-                tribe == null ? null : tribe.getId(), tribe == null ? null : tribe.getName(), tribe == null ? null : tribe.getTag(), title);
+                tribe == null ? null : tribe.getId(), tribe == null ? null : tribe.getName(), tribe == null ? null : tribe.getTag(), title,
+                war, canDeclareWar, wars, se.oscarwiklund.twlan2.backend.service.npc.NpcDifficulty.of(world).attacks(),
+                WorldSettings.number(world, "warPeaceHours"));
+    }
+
+    private static WarInfo warInfo(PlayerWar w, Account opponent, Account declaredOn, Tribe tribe, World world) {
+        return new WarInfo(opponent.getUsername(), declaredOn.getUsername(), !declaredOn.getId().equals(opponent.getId()), w.getDeclaredBy(),
+                w.getStartedAt(), PlayerWarService.peaceFrom(w, world), w.isPending(),
+                tribe == null ? null : tribe.getId(), tribe == null ? null : tribe.getName());
     }
 
     public record Edit(String description, String location, String birthday) {}

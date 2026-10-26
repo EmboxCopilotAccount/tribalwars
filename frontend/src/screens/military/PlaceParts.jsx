@@ -2,6 +2,7 @@
 // and overview/{outgoing,incoming}Units.php; behaviour mirrors js/VillageTarget.js + game.js helpers.
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { api } from "../../api";
 import { PLAYER_NAME, villagePoints } from "../../lib/data";
 import {
   PLACE_COLUMNS,
@@ -602,6 +603,16 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
   const [aim, setAim] = useState(""); // the building the catapults aim at ("" = random), as on the original's confirm page
+  // #118: an attack on a computer player you are not at war with declares war on it (and its tribe) when it is sent
+  const [ownerProfile, setOwnerProfile] = useState(null);
+  const npcOwner = isAttack && target.ownerType === "PLAYER" && target.ownerNpc ? target.ownerName : null;
+  useEffect(() => {
+    if (!npcOwner) return undefined;
+    let alive = true;
+    api.player(npcOwner).then((p) => alive && setOwnerProfile({ owner: npcOwner, p })).catch(() => {});
+    return () => { alive = false; };
+  }, [npcOwner]);
+  const declares = ownerProfile && ownerProfile.owner === npcOwner && ownerProfile.p.canDeclareWar ? ownerProfile.p : null;
   const grouped = (n) => {
     const s = String(n);
     return s.length <= 3 ? [s] : [s.slice(0, -3), <span className="grey" key="g">.</span>, s.slice(-3)];
@@ -736,6 +747,11 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
           )}
         </tbody>
       </table>
+      {declares && (
+        <p className="warn" style={{ fontWeight: "bold" }}>
+          Sending this attack declares war on {declares.name}{declares.tribeName ? ` (and its tribe ${declares.tribeName})` : ""}.
+        </p>
+      )}
       <br />
 
       <table className="vis">

@@ -14,18 +14,29 @@ import java.util.*;
 // and sends it; when it does not know enough it sends scouts first. Farming NPCs return to targets that paid off and drop
 // those that did not, and a grudge (see NpcIntelService) pulls an NPC toward whoever hit it. All orders go through
 // MovementService, so the rules are the players' rules.
+// Real players are only attacked at war (PlayerWarService, #118): then every village of the enemy is a target at any
+// distance (the close ones first), the NPC acts on every step it gets, and a village near the enemy that cannot win
+// safely sends a full assault or saves up for one instead of scouting again and again.
 @Service
 public class NpcMilitary {
 
     private static final List<UnitType> OFFENCE = List.of(UnitType.AXE, UnitType.LIGHT, UnitType.MARCHER, UnitType.RAM, UnitType.CATAPULT);
     // Scouts a village needs at home before it will scout (fewer survive too rarely to see the garrison).
     private static final int MIN_SCOUTS = 4;
+    // War: at most this many of the enemy's villages are looked at per step (the closest).
+    private static final int WAR_TARGETS = 10;
+    // War tuning: a strike may cost up to this share of itself, and takes at least this share of the offence along.
+    private static final double WAR_MAX_LOSS = 0.75, WAR_MIN_COMMIT = 0.9;
+    // A full assault goes when on an average day it kills this share of the defenders, or its attack reaches this share of the defence.
+    private static final double ASSAULT_KILL_SHARE = 0.3, ASSAULT_POWER_SHARE = 0.5;
 
     private final UnitStockRepository unitStock;
     private final MovementService movementService;
     private final NpcIntelService intel;
     private final NpcLogService npcLog;
     private final GameSettings settings;
+    // village -> the war target it is saving up for (so the NPC log notes it once, not on every step)
+    private final Map<Long, Long> saving = new java.util.concurrent.ConcurrentHashMap<>();
 
     public NpcMilitary(UnitStockRepository unitStock, MovementService movementService,
                        NpcIntelService intel, NpcLogService npcLog, GameSettings settings) {
@@ -42,11 +53,37 @@ public class NpcMilitary {
 
     private record Strike(Candidate c, AttackPlanner.Plan plan, String basis, double score) {}
 
+    private record Scouting(Candidate c, int scouts) {}
+
     // How the NPC's tribe sees the tribe of the village's owner (null: no tribe or no relation).
     private TribeRelation.Kind relationTo(Tribe mine, Village target, WorldView view) {
         if (mine == null || target.getOwner() == null) return null;
         Tribe other = view.tribeByAccount.get(target.getOwner().getId());
         return other == null ? null : view.relation(mine.getId(), other.getId());
+    }
+
+    // Whether the NPC village may attack `t` at all: not its own, its tribe's, a partner's or NAP's, and not protected.
+    private boolean attackable(Village v, Village t, Tribe myTribe, WorldView view) {
+        if (t.getId().equals(v.getId()) || MovementService.isSameOwner(v, t)) return false;
+        TribeRelation.Kind kind = relationTo(myTribe, t, view);
+        if (kind == TribeRelation.Kind.PARTNER || kind == TribeRelation.Kind.NAP) return false;
+        Tribe theirs = t.getOwner() == null ? null : view.tribeByAccount.get(t.getOwner().getId());
+        if (myTribe != null && theirs != null && theirs.getId().equals(myTribe.getId())) return false;
+        return !MovementService.underProtection(t);
+    }
+
+    private static double distance(Village a, Village b) {
+        return Math.hypot(a.getX() - b.getX(), a.getY() - b.getY());
+    }
+
+    // `share` of each offensive unit at home (so a raid never empties the village).
+    private static Map<UnitType, Integer> committed(Map<UnitType, Integer> home, double share) {
+        Map<UnitType, Integer> army = new EnumMap<>(UnitType.class);
+        for (UnitType t : OFFENCE) {
+            int n = (int) Math.floor(home.getOrDefault(t, 0) * share);
+            if (n > 0) army.put(t, n);
+        }
+        return army;
     }
 
     @Transactional(noRollbackFor = MovementService.MovementException.class)
@@ -62,14 +99,9 @@ public class NpcMilitary {
         // what it can send: the offensive troops (a share of them, so a raid never empties the village)
         Map<UnitType, Integer> home = new EnumMap<>(UnitType.class);
         for (UnitStock s : unitStock.findByVillage(v)) if (s.getCount() > 0) home.put(s.getType(), s.getCount());
-        Map<UnitType, Integer> army = new EnumMap<>(UnitType.class);
+        Map<UnitType, Integer> army = committed(home, d.commit());
         double power = 0;
-        for (UnitType t : OFFENCE) {
-            int n = (int) Math.floor(home.getOrDefault(t, 0) * d.commit());
-            if (n <= 0) continue;
-            army.put(t, n);
-            power += (double) t.attack * n;
-        }
+        for (var e : army.entrySet()) power += (double) e.getKey().attack * e.getValue();
         int scouts = home.getOrDefault(UnitType.SCOUT, 0);
         int snobs = home.getOrDefault(UnitType.SNOB, 0);
         boolean scoutOnlyPossible = d.scouts() && scouts >= MIN_SCOUTS;
@@ -79,29 +111,27 @@ public class NpcMilitary {
         int need = ConquestPlan.wavesNeeded(100, (int) WorldSettings.number(world, "noblemanMinDecrease"),
                 (int) WorldSettings.number(world, "noblemanMaxDecrease"), false);
         boolean conquestReady = expansion != NpcDifficulty.Expansion.NONE && snobs >= need;
+
+        // war: the villages of the players at war with this NPC (or its tribe), the closest first, at any distance
+        Tribe myTribe = view.tribeOf(me);
+        List<Village> war = new ArrayList<>();
+        for (Village t : view.warTargets(me.getId())) if (attackable(v, t, myTribe, view)) war.add(t);
+        war.sort(Comparator.comparingDouble(t -> distance(v, t)));
+        if (war.size() > WAR_TARGETS) war = new ArrayList<>(war.subList(0, WAR_TARGETS));
+        boolean atWar = !war.isEmpty();
+        if (!atWar) saving.remove(v.getId());
+
         double chance = d.raidChance() * archetype.drive() * (0.5 + skill);
         boolean mood = rnd.nextDouble() <= chance;
-        if (!conquestReady && !mood) return;
+        if (!conquestReady && !mood && !atWar) return; // at war it acts on every step (no mood roll for the war)
         boolean act = mood || rnd.nextDouble() < chance * 4; // a conquering NPC clears and scouts its target faster
-        if (power < 400 && !(scoutOnlyPossible && power > 0) && !conquestReady) return;
+        // raids on barbarians and NPCs (and conquests) keep their mood: a war does not make an NPC farm more
+        boolean ordinary = (conquestReady || mood) && !(power < 400 && !(scoutOnlyPossible && power > 0) && !conquestReady);
+        if (!ordinary && !atWar) return;
 
-        Tribe myTribe = view.tribeOf(me);
         Map<Long, NpcIntel> known = intel.of(me.getId());
         Map<Long, Double> grudges = d.retaliation() ? intel.grudgesOf(me.getId(), speed) : Map.of();
         double range = (12 + 20 * archetype.drive()) * (grudges.isEmpty() ? 1 : 1.4);
-
-        List<Village> around = new ArrayList<>();
-        for (Village t : view.near(v.getX(), v.getY(), range)) {
-            if (Math.hypot(t.getX() - v.getX(), t.getY() - v.getY()) > range) continue;
-            if (t.getId().equals(v.getId()) || MovementService.isSameOwner(v, t)) continue;
-            TribeRelation.Kind kind = relationTo(myTribe, t, view);
-            if (kind == TribeRelation.Kind.PARTNER || kind == TribeRelation.Kind.NAP) continue;
-            Tribe theirs = t.getOwner() == null ? null : view.tribeByAccount.get(t.getOwner().getId());
-            if (myTribe != null && theirs != null && theirs.getId().equals(myTribe.getId())) continue;
-            if (MovementService.underProtection(t)) continue;
-            around.add(t);
-        }
-        Collections.shuffle(around, rnd);
 
         double basicDefense = WorldSettings.number(world, "basicDefense");
         double night = WorldSettings.isNight(world, java.time.LocalTime.now()) ? WorldSettings.number(world, "nightBonus") : 1;
@@ -110,87 +140,214 @@ public class NpcMilitary {
         List<Candidate> toScout = new ArrayList<>();
         List<Conquest> conquests = new ArrayList<>();
 
-        for (Village t : around.subList(0, Math.min(10, around.size()))) {
-            boolean human = t.getOwner() != null && !t.getOwner().isNpc();
-            boolean barbarian = t.getOwnerType() == OwnerType.BARBARIAN;
-            double grudge = t.getOwner() == null ? 0 : grudges.getOrDefault(t.getOwner().getId(), 0.0);
-            if (human && grudge == 0 && rnd.nextDouble() < d.humanSkip()) continue; // a passive NPC leaves players alone half the time
-            if (view.underAttack(t)) continue;
+        if (ordinary) {
+            List<Village> around = new ArrayList<>();
+            for (Village t : view.near(v.getX(), v.getY(), range)) {
+                if (distance(v, t) > range) continue;
+                if (t.getOwner() != null && !t.getOwner().isNpc()) continue; // real players: only at war (below)
+                if (attackable(v, t, myTribe, view)) around.add(t);
+            }
+            Collections.shuffle(around, rnd);
 
-            double w = barbarian ? 3.0 : human ? d.humanWeight() : 1.0;
-            if (BonusType.of(t) != null) w *= 2;                                                        // a bonus village is public knowledge (map popup) and worth having
+            for (Village t : around.subList(0, Math.min(10, around.size()))) {
+                boolean barbarian = t.getOwnerType() == OwnerType.BARBARIAN;
+                double grudge = t.getOwner() == null ? 0 : grudges.getOrDefault(t.getOwner().getId(), 0.0);
+                if (view.underAttack(t)) continue;
+
+                double w = barbarian ? 3.0 : 1.0;
+                if (BonusType.of(t) != null) w *= 2;                                                        // a bonus village is public knowledge (map popup) and worth having
+                if (relationTo(myTribe, t, view) == TribeRelation.Kind.ENEMY) w *= 3;
+                if (grudge > 0) w *= 1 + 4 * grudge;
+                NpcIntel i = known.get(t.getId());
+                if (d.farming() && i != null) {
+                    if ("LOST".equals(i.getLastResult()) && i.getLosses() >= 2) w *= 0.2;                        // it hurt us here
+                    else if ("WON".equals(i.getLastResult()) && i.getRaids() > 0 && i.getLastLoot() < 40) w *= 0.15; // nothing left to take
+                    else if ("WON".equals(i.getLastResult()) && i.getLastLoot() >= 200) w *= 1.5;               // pays well: come back
+                }
+                Candidate c = new Candidate(t, w, false, barbarian, false);
+                boolean conquerable = conquestReady && expansion.allows(barbarian, false, false);
+                if (conquerable) c = new Candidate(t, w * 2.5, false, barbarian, false); // clear it, then take it
+
+                Map<UnitType, Integer> seen;
+                int wall;
+                double margin;
+                String basis;
+                if (NpcIntelService.fresh(i, speed, now)) {
+                    seen = NpcIntelService.parse(i.getTroops());
+                    wall = i.getWall() == null ? 0 : i.getWall();
+                    margin = d.intelNoise();
+                    basis = "scouted";
+                } else if (scoutOnlyPossible) {
+                    toScout.add(c);
+                    continue;
+                } else {
+                    // no scouts (or none wanted): a guess from the public points, and a wide safety margin for it
+                    double noise = 1 + d.intelNoise() * (2 * rnd.nextDouble() - 1) * 1.5;
+                    int points = view.points(t);
+                    seen = AttackPlanner.guessGarrison(points, noise);
+                    wall = Math.min(15, points / 150);
+                    margin = 0.3 + d.intelNoise();
+                    basis = "guess";
+                }
+
+                double loot = i != null && i.getWood() != null ? 0.9 * (i.getWood() + i.getClay() + i.getIron())
+                        : i != null && i.getLastLoot() > 0 ? 0.8 * i.getLastLoot() : 300;
+                if (conquerable && basis.equals("scouted") && seen.isEmpty()) {
+                    // cleared and known: this is the moment for the noblemen
+                    var waves = ConquestPlan.waves(snobs, need, army, seen, wall, basicDefense, night, 1, margin);
+                    if (waves != null) {
+                        conquests.add(new Conquest(c, waves, c.weight()));
+                        continue;
+                    }
+                }
+                boolean rams = wall > 0 && (d.farming() || (i != null && i.getRaids() > 0));
+                Map<UnitType, Integer> forThis = new EnumMap<>(army);
+                var plan = AttackPlanner.plan(forThis, seen, wall, basicDefense, night, 1, margin, loot, d.farming() ? 0.3 : 0.5, rams);
+                if (plan == null) continue;
+                double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
+                double score = w * (1 + Math.min(loot, plan.carry()) / 500.0) / (d.farming() ? 1 + travelHours : 1);
+                strikes.add(new Strike(c, plan, basis, score));
+            }
+        }
+
+        // ---- war ----
+        // a village with one of the enemy's villages within its normal range fights the war in full (assaults, saving
+        // up for them); farther ones only send attacks that win and otherwise go on raiding as usual
+        boolean near = false;
+        for (Village t : war) if (distance(v, t) <= range) { near = true; break; }
+        Map<UnitType, Integer> warArmy = committed(home, Math.max(WAR_MIN_COMMIT, d.commit()));
+        List<Strike> warStrikes = new ArrayList<>();
+        List<Strike> assaults = new ArrayList<>();
+        List<Scouting> warScouts = new ArrayList<>();
+        Candidate savingFor = null;
+        for (Village t : war) {
+            double dist = distance(v, t);
+            boolean last = view.villageCount(t.getOwner()) <= 1;
+            double grudge = grudges.getOrDefault(t.getOwner().getId(), 0.0);
+            // the close villages first by a big margin: x4.3 at 3 fields, x1.5 at 15, x0.67 at 30, x0.11 at 100
+            double w = d.humanWeight() * 6 * Math.pow(15 / (15 + dist), 2);
+            if (BonusType.of(t) != null) w *= 2;
             if (relationTo(myTribe, t, view) == TribeRelation.Kind.ENEMY) w *= 3;
             if (grudge > 0) w *= 1 + 4 * grudge;
+            boolean conquerable = conquestReady && expansion.allows(false, true, last);
+            if (conquerable) w *= 2.5;
+            Candidate c = new Candidate(t, w, true, false, last);
             NpcIntel i = known.get(t.getId());
-            if (d.farming() && i != null) {
-                if ("LOST".equals(i.getLastResult()) && i.getLosses() >= 2) w *= 0.2;                        // it hurt us here
-                else if ("WON".equals(i.getLastResult()) && i.getRaids() > 0 && i.getLastLoot() < 40) w *= 0.15; // nothing left to take
-                else if ("WON".equals(i.getLastResult()) && i.getLastLoot() >= 200) w *= 1.5;               // pays well: come back
-            }
-            Candidate c = new Candidate(t, w, human, barbarian, human && view.villageCount(t.getOwner()) <= 1);
-            boolean conquerable = conquestReady && expansion.allows(barbarian, human, c.lastOfHuman());
-            if (conquerable) c = new Candidate(t, w * 2.5, human, barbarian, c.lastOfHuman()); // clear it, then take it
 
             Map<UnitType, Integer> seen;
             int wall;
             double margin;
             String basis;
             if (NpcIntelService.fresh(i, speed, now)) {
-                seen = NpcIntelService.parse(i.getTroops());
+                seen = NpcIntelService.parse(i.getTroops()); // scouted, or seen empty after a won battle
                 wall = i.getWall() == null ? 0 : i.getWall();
                 margin = d.intelNoise();
                 basis = "scouted";
-            } else if (scoutOnlyPossible) {
-                toScout.add(c);
-                continue;
             } else {
-                // no scouts (or none wanted): a guess from the public points, and a wide safety margin for it
+                int lost = i == null ? 0 : i.getLossStreak();
+                int scoutWith = lost > 0 ? 0 : warScouts(d, i, me, t, scouts, skill, now);
+                if (scoutWith > 0) {
+                    warScouts.add(new Scouting(c, scoutWith));
+                    continue;
+                }
+                // a guess from the points; after lost battles here it is bigger each time (x1.5 per loss in a row), not scouted again
                 double noise = 1 + d.intelNoise() * (2 * rnd.nextDouble() - 1) * 1.5;
                 int points = view.points(t);
-                seen = AttackPlanner.guessGarrison(points, noise);
-                wall = Math.min(15, points / 150);
+                seen = AttackPlanner.guessGarrison(points, noise * Math.pow(1.5, lost));
+                wall = i != null && i.getWall() != null ? i.getWall() : Math.min(15, points / 150);
                 margin = 0.3 + d.intelNoise();
-                basis = "guess";
+                basis = lost > 0 ? "guess after " + lost + (lost == 1 ? " loss" : " losses") : "guess";
             }
+            margin /= 2; // at war it takes more risk
 
             double loot = i != null && i.getWood() != null ? 0.9 * (i.getWood() + i.getClay() + i.getIron())
                     : i != null && i.getLastLoot() > 0 ? 0.8 * i.getLastLoot() : 300;
-            double morale = 1;
-            if (moraleOn && human) morale = BattleCalculator.morale(view.pointsOf(me), view.pointsOf(t.getOwner()));
+            double morale = moraleOn ? BattleCalculator.morale(view.pointsOf(me), view.pointsOf(t.getOwner())) : 1;
             if (conquerable && basis.equals("scouted") && seen.isEmpty()) {
-                // cleared and known: this is the moment for the noblemen
-                var waves = ConquestPlan.waves(snobs, need, army, seen, wall, basicDefense, night, morale, margin);
+                var waves = ConquestPlan.waves(snobs, need, warArmy, seen, wall, basicDefense, night, morale, margin);
                 if (waves != null) {
                     conquests.add(new Conquest(c, waves, c.weight()));
                     continue;
                 }
             }
-            boolean rams = wall > 0 && (d.farming() || (i != null && i.getRaids() > 0));
-            Map<UnitType, Integer> forThis = new EnumMap<>(army);
-            var plan = AttackPlanner.plan(forThis, seen, wall, basicDefense, night, morale, margin, loot, d.farming() ? 0.3 : 0.5, rams);
-            if (plan == null) continue;
-            double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
-            double score = w * (1 + Math.min(loot, plan.carry()) / 500.0) / (d.farming() ? 1 + travelHours : 1);
-            strikes.add(new Strike(c, plan, basis, score));
+            var plan = AttackPlanner.plan(new EnumMap<>(warArmy), seen, wall, basicDefense, night, morale, margin, loot, WAR_MAX_LOSS, wall > 0);
+            if (plan != null) {
+                double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
+                warStrikes.add(new Strike(c, plan, "war, " + basis, w * (1 + Math.min(loot, plan.carry()) / 500.0) / (1 + travelHours)));
+                continue;
+            }
+            if (!near) continue;
+            var all = AttackPlanner.assault(warArmy, seen, wall, basicDefense, night, morale, ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE);
+            if (all != null) {
+                double travelHours = MovementService.travelSeconds(v, t, all.send(), settings.travelSpeedOf(v)) / 3600.0;
+                assaults.add(new Strike(c, all, "war, full assault, " + basis, w / (1 + travelHours)));
+            } else if (savingFor == null || w > savingFor.weight()) {
+                savingFor = c;
+            }
         }
 
         if (!conquests.isEmpty()) {
             Conquest best = conquests.get(pickIndex(conquests.stream().map(Conquest::score).toList(), rnd));
             sendConquest(v, me, best, view);
-        } else if (!act) {
+            saving.remove(v.getId());
             return;
-        } else if (!strikes.isEmpty()) {
+        }
+        if (!warStrikes.isEmpty() || !warScouts.isEmpty() || !assaults.isEmpty()) {
+            saving.remove(v.getId());
+            if (!warStrikes.isEmpty()) {
+                sendStrike(v, me, rnd.nextDouble() < skill ? Collections.max(warStrikes, Comparator.comparingDouble(Strike::score)) : weighted(warStrikes, rnd), view);
+            } else if (!warScouts.isEmpty()) {
+                Scouting s = warScouts.get(pickIndex(warScouts.stream().map(x -> x.c().weight()).toList(), rnd));
+                sendScouts(v, me, s.c().target(), s.scouts(), view);
+            } else {
+                sendStrike(v, me, rnd.nextDouble() < skill ? Collections.max(assaults, Comparator.comparingDouble(Strike::score)) : weighted(assaults, rnd), view);
+            }
+            return;
+        }
+        if (near && savingFor != null) {
+            // too weak for any assault on the enemy nearby: no raids elsewhere, the offence stays home and grows
+            Village t = savingFor.target();
+            if (!t.getId().equals(saving.put(v.getId(), t.getId()))) {
+                npcLog.add(world, me, v, "SAVING", v.getName() + " is saving for war on " + t.getName() + " (" + t.getX() + "|" + t.getY() + ") of "
+                        + t.getOwner().getUsername());
+            }
+            return;
+        }
+        saving.remove(v.getId());
+
+        if (!ordinary || !act) return;
+        if (!strikes.isEmpty()) {
             Strike s = rnd.nextDouble() < skill ? Collections.max(strikes, Comparator.comparingDouble(Strike::score)) : weighted(strikes, rnd);
             sendStrike(v, me, s, view);
         } else if (!toScout.isEmpty()) {
             Candidate c = toScout.get(pickIndex(toScout.stream().map(Candidate::weight).toList(), rnd));
-            // enough scouts to beat the ones it expects at home (what an old report showed, else a guess for players and NPCs)
+            // enough scouts to beat the ones it expects at home (what an old report showed, else a guess for NPCs)
             NpcIntel old = known.get(c.target().getId());
             int expected = old != null && old.getTroops() != null ? NpcIntelService.parse(old.getTroops()).getOrDefault(UnitType.SCOUT, 0)
                     : c.barbarian() ? 0 : 8;
             int n = Math.min(scouts, Math.max((int) Math.round(4 + 6 * skill), (int) Math.ceil(1.5 * expected) + 3));
             sendScouts(v, me, c.target(), n, view);
         }
+    }
+
+    // How many scouts to send at a war target whose garrison it does not know; 0: it does not scout it now and attacks on
+    // a guess instead (no scouts wanted or at home, scouting it is paused after two failed runs in a row, or too few
+    // scouts at home for a retry, which takes at least twice as many as the failed run).
+    private int warScouts(NpcDifficulty d, NpcIntel i, Account me, Village t, int scouts, double skill, Instant now) {
+        if (!d.scouts() || scouts < MIN_SCOUTS) return 0;
+        if (i != null && i.getScoutPausedUntil() != null) {
+            if (now.isBefore(i.getScoutPausedUntil())) return 0;
+            intel.resumeScouting(me.getId(), t.getId()); // the pause is over: failed runs are counted afresh
+            i.setFailedScouts(0);
+            i.setScoutPausedUntil(null);
+        }
+        int expected = i != null && i.getTroops() != null ? NpcIntelService.parse(i.getTroops()).getOrDefault(UnitType.SCOUT, 0) : 8;
+        int want = Math.max((int) Math.round(4 + 6 * skill), (int) Math.ceil(1.5 * expected) + 3);
+        if (i != null && i.getFailedScouts() > 0) {
+            want = Math.max(want, 2 * i.getScoutsSent());
+            return scouts >= want ? want : 0;
+        }
+        return Math.min(scouts, want);
     }
 
     // A chain of attacks, each with one nobleman and an escort that wins alone: they land one after the other and take the loyalty down.

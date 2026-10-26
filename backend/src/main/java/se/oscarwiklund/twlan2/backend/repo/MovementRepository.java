@@ -19,4 +19,7 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
             + " or (m.targetVillage = :v and m.type = :ret) group by key(u)")
     List<Object[]> sumUnitsAway(@Param("v") Village village, @Param("ret") MovementType returnType);
     List<Movement> findByOriginVillageAndTargetVillageAndTypeAndDepartedAtAfter(Village origin, Village target, MovementType type, Instant after);
+    // Commands of one type a player has on the way to villages of the given owners (a war declared by attacking stands while one is underway).
+    @Query("select count(m) from Movement m where m.type = :type and m.originVillage.owner.id = :sender and m.targetVillage.owner.id in :owners")
+    long countFromOwnerTo(@Param("sender") Long senderAccountId, @Param("owners") java.util.Collection<Long> ownerIds, @Param("type") MovementType type);
 }

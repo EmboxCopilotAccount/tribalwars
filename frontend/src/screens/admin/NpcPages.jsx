@@ -6,12 +6,12 @@ import { fmtDate, fmtInt, plural, useLoad } from "./util.jsx";
 const A = api.admin;
 const DIFFICULTY_TEXT = {
   off: "NPCs build but never attack.",
-  passive: "A lively backdrop: raids on barbarians, rarely you.",
+  passive: "A lively backdrop: raids on barbarians and other NPCs.",
   normal: "Scouts before attacking, notices and dodges attacks, conquers barbarian villages.",
   hard: "Farms barbarians, retaliates, asks tribe-mates for help, conquers NPC and player villages (not your last).",
   brutal: "Fast and precise, coordinated waves, can take your last village.",
 };
-const KIND_TONE = { CONQUEST: "bad", BATTLE: "neutral", RAID: "npc", SCOUT: "neutral", NOBLE: "admin", DODGE: "neutral", SUPPORT: "neutral", TRADE: "neutral", MARKET: "neutral", ALARM: "bad" };
+const KIND_TONE = { CONQUEST: "bad", BATTLE: "neutral", RAID: "npc", SCOUT: "neutral", NOBLE: "admin", DODGE: "neutral", SUPPORT: "neutral", TRADE: "neutral", MARKET: "neutral", ALARM: "bad", WAR: "bad", SAVING: "neutral" };
 
 /* The NPC AI of a world: difficulty, who plays which archetype (editable) and what they have been doing. */
 export function NpcAi({ world, go }) {

@@ -41,13 +41,15 @@ public class CombatService {
     private final NpcIntelService npcIntel;
     private final NpcOverrunCooldown overrun;
     private final BuildQueueItemRepository buildQueue;
+    private final PlayerWarService playerWars;
 
     public CombatService(LiveUpdates live, UnitStockRepository unitStockRepository, CombatReportRepository combatReportRepository,
                           VillageService villageService, AchievementService achievements, ConquestService conquests,
                           BuildingRepository buildingRepository, VillageRepository villageRepository,
                           MovementRepository movementRepository, SupportService support, WarService wars, NpcLogService npcLog,
-                          NpcIntelService npcIntel, NpcOverrunCooldown overrun, BuildQueueItemRepository buildQueue) {
+                          NpcIntelService npcIntel, NpcOverrunCooldown overrun, BuildQueueItemRepository buildQueue, PlayerWarService playerWars) {
         this.live = live;
+        this.playerWars = playerWars;
         this.buildQueue = buildQueue;
         this.npcIntel = npcIntel;
         this.npcLog = npcLog;
@@ -336,14 +338,19 @@ public class CombatService {
             // what the NPC learned: scouts report the garrison, a battle shows how the raid went
             if (scoutsOnly) {
                 int spyLevel = detail.getOrDefault("spy_level", 0);
+                int scoutsSent = attackerUnits.getOrDefault(UnitType.SCOUT, 0);
                 if (spyLevel > 0) {
                     npcIntel.spy(world, attackerOwner, defenderVillage, spyLevel, defenderUnits, spyLevel >= 2 ? detail.getOrDefault("spy_building:WALL", 0) : null,
-                            detail.getOrDefault("spy_wood", 0), detail.getOrDefault("spy_clay", 0), detail.getOrDefault("spy_iron", 0));
+                            detail.getOrDefault("spy_wood", 0), detail.getOrDefault("spy_clay", 0), detail.getOrDefault("spy_iron", 0), scoutsSent);
+                } else {
+                    npcIntel.scoutsLost(world, attackerOwner, defenderVillage, scoutsSent);
                 }
             } else {
                 npcIntel.battle(world, attackerOwner, defenderVillage, outcome == BattleOutcome.ATTACKER_WIN, wallAfter, (int) Math.round(lootWood + lootClay + lootIron));
             }
         }
+        // a war a player started by attacking this NPC is final once an attack lands
+        if (previousOwner != null && previousOwner.isNpc()) playerWars.onAttackLanded(world, attackerOwner, previousOwner);
         // an NPC remembers who attacked it
         if (!scoutsOnly && previousOwner != null && previousOwner.isNpc() && attackerOwner != null && !previousOwner.getId().equals(attackerOwner.getId())) {
             npcIntel.hit(world, previousOwner, attackerOwner, conquered ? 3 : outcome == BattleOutcome.ATTACKER_WIN ? 1.5 : 0.7);

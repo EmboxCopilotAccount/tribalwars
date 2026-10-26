@@ -19,6 +19,7 @@ public class MovementService {
     private final GameSettings settings;
     private final TribeService tribes;
     private final WorldPoints worldPoints;
+    private final PlayerWarService playerWars;
 
     // World setting "fakeLimit": an attack carrying less total population than this counts as a fake. Not derivable
     // from the (compiled) original — a reasonable classic-Tribal-Wars-style approximation.
@@ -30,8 +31,9 @@ public class MovementService {
     private static final double FARM_RULE_RATIO = 5.0;
 
     public MovementService(LiveUpdates live, MovementRepository movementRepository, UnitStockRepository unitStockRepository, GameSettings settings,
-                           TribeService tribes, WorldPoints worldPoints) {
+                           TribeService tribes, WorldPoints worldPoints, PlayerWarService playerWars) {
         this.live = live;
+        this.playerWars = playerWars;
         this.tribes = tribes;
         this.settings = settings;
         this.movementRepository = movementRepository;
@@ -95,7 +97,9 @@ public class MovementService {
                 throw new MovementException("Fake attack limit reached for this village");
             }
         }
-        return send(origin, target, requestedUnits, MovementType.ATTACK);
+        Movement m = send(origin, target, requestedUnits, MovementType.ATTACK);
+        playerWars.onAttackSent(m); // a player's attack on an NPC declares war on it
+        return m;
     }
 
     private static int totalPopulation(Map<UnitType, Integer> units) {
@@ -272,6 +276,7 @@ public class MovementService {
         back.setDepartedAt(now);
         back.setArrivesAt(now.plusSeconds(Math.max(1, walked)));
         movementRepository.delete(m);
+        playerWars.onAttackCancelled(m); // the war this attack declared is called off with it, unless another one is on its way
         live.village(origin);
         live.village(m.getTargetVillage()); // the incoming attack disappears there
         return movementRepository.save(back);

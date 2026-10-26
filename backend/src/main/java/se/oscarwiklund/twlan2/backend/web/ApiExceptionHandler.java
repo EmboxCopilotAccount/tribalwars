@@ -5,6 +5,7 @@ import se.oscarwiklund.twlan2.backend.service.BuildService;
 import se.oscarwiklund.twlan2.backend.service.MarketService;
 import se.oscarwiklund.twlan2.backend.service.MovementService;
 import se.oscarwiklund.twlan2.backend.service.NobleService;
+import se.oscarwiklund.twlan2.backend.service.PlayerWarService;
 import se.oscarwiklund.twlan2.backend.service.ResearchService;
 import se.oscarwiklund.twlan2.backend.service.TrainService;
 import se.oscarwiklund.twlan2.backend.service.TribeService;
@@ -26,6 +27,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(GameFacade.NotJoinedException.class)
     public ResponseEntity<Map<String, String>> handleNotJoined(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
+
+    // Peace asked for before the cooldown ended: says from when it is possible.
+    @ExceptionHandler(PlayerWarService.PeaceTooEarlyException.class)
+    public ResponseEntity<Map<String, String>> handlePeaceTooEarly(PlayerWarService.PeaceTooEarlyException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage(), "peaceFrom", ex.peaceFrom().toString()));
     }
 
     @ExceptionHandler({BuildService.BuildException.class, TrainService.TrainException.class,

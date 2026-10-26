@@ -5,7 +5,7 @@
 // bundle has no such page, so the tables use its .vis styling.
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { continentOf } from "../lib/military";
+import { continentOf, fmtOnTime } from "../lib/military";
 import { AwardImage } from "./achievements/AchievementsScreen";
 
 const fmt = (n) => Number(n).toLocaleString("de-DE");
@@ -13,14 +13,31 @@ const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: 
 
 export const profileTarget = (name) => "info_player:p_" + name;
 
+// How a war with an NPC came about, from the player's side.
+function warOrigin(w, go) {
+  if (w.viaTribe) {
+    return (
+      <>
+        via the tribe {w.tribeId ? <a href="#" onClick={(e) => go(e, "info_ally:" + w.tribeId)}>{w.tribeName}</a> : w.tribeName}: declared
+        on <a href="#" onClick={(e) => go(e, profileTarget(w.declaredOn))}>{w.declaredOn}</a>, peace is made with them
+      </>
+    );
+  }
+  return w.declaredBy === "PLAYER" ? "declared by you" : "declared by them after your attack";
+}
+
+const peaceOpen = (w) => new Date(w.peaceFrom) <= new Date();
+
 export function ProfileScreen({ name, go }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     let alive = true;
     setProfile(null);
     setError(null);
+    setActionError(null);
     const load = () => api.player(name ?? "me").then((p) => alive && setProfile(p)).catch((e) => alive && setError(e.message));
     load();
     const id = setInterval(load, 10000);
@@ -31,6 +48,22 @@ export function ProfileScreen({ name, go }) {
   if (!profile) return <p>Loading…</p>;
 
   const p = profile;
+  const war = p.war;
+
+  const act = (call) => call(p.name).then(setProfile).then(() => setActionError(null)).catch((e) => setActionError(e.message));
+  const declareWar = (e) => {
+    e.preventDefault();
+    const hours = p.warPeaceHours;
+    const text = !p.npcsAttack
+      ? `Declare war on ${p.name}?\n\nNPCs never attack on this world, so for now the war changes nothing for you.`
+      : `Declare war on ${p.name}?\n\n${p.name}${p.tribeName ? ` and the other computer players of its tribe ${p.tribeName}` : ""} will scout and attack your villages, `
+        + `and may take them with noblemen. Peace is possible ${hours > 0 ? `only after ${hours} ${hours === 1 ? "hour" : "hours"}` : "at any time"}.`;
+    if (window.confirm(text)) act(api.declareWar);
+  };
+  const makePeace = (e) => {
+    e.preventDefault();
+    if (window.confirm(`Make peace with ${p.name}?`)) act(api.makePeace);
+  };
   const paragraphs = (p.description || "").split(/\n/);
   return (
     <>
@@ -63,6 +96,15 @@ export function ProfileScreen({ name, go }) {
                   <tr><td>Player since:</td><td>{fmtDay(p.memberSince)}</td></tr>
                   {p.birthday && <tr><td>Birthday:</td><td>{fmtDay(p.birthday)}</td></tr>}
                   {p.location && <tr><td>Location:</td><td>{p.location}</td></tr>}
+                  {war && (
+                    <tr>
+                      <td>War:</td>
+                      <td>
+                        <span className="warn">At war</span> since {fmtOnTime(war.startedAt, false)} ({warOrigin(war, go)})
+                        {war.pending && <div className="inactive">Cancelling your attack in time calls this war off.</div>}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               <br />
@@ -96,7 +138,43 @@ export function ProfileScreen({ name, go }) {
                     <a href="#" onClick={(e) => go(e, "settings:profile")}>» Edit profile</a>
                   </>
                 )}
+                {p.canDeclareWar && (
+                  <>
+                    <br />
+                    <a href="#" onClick={declareWar}>» Declare war</a>
+                  </>
+                )}
+                {war && !war.viaTribe && (
+                  <>
+                    <br />
+                    {peaceOpen(war)
+                      ? <a href="#" onClick={makePeace}>» Make peace</a>
+                      : <span className="inactive">» Make peace (possible from {fmtOnTime(war.peaceFrom, false)})</span>}
+                  </>
+                )}
               </p>
+              {actionError && <div className="error_box">{actionError}</div>}
+              {p.own && (p.wars ?? []).length > 0 && (
+                <table className="vis" width="100%">
+                  <tbody>
+                    <tr>
+                      <th>Wars</th>
+                      <th>Since</th>
+                      <th>Peace</th>
+                    </tr>
+                    {p.wars.map((w) => (
+                      <tr key={w.opponent}>
+                        <td>
+                          <a href="#" onClick={(e) => go(e, profileTarget(w.opponent))}>{w.opponent}</a>
+                          {w.tribeName ? ` (${w.tribeName})` : ""}
+                        </td>
+                        <td>{fmtOnTime(w.startedAt, false)}</td>
+                        <td>{peaceOpen(w) ? "possible" : <span className="inactive">from {fmtOnTime(w.peaceFrom, false)}</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </td>
             <td valign="top">
               <table className="vis" width="100%">

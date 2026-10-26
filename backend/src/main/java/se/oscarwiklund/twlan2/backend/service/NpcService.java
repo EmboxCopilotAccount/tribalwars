@@ -69,6 +69,7 @@ public class NpcService {
     private final Map<Long, Personality> personalities = new java.util.concurrent.ConcurrentHashMap<>();
     private final WorldPoints worldPoints;
     private final TribeService tribeService;
+    private final PlayerWarService playerWars;
     private final Random rnd = new Random();
     private final TransactionTemplate tx;
     private final long budgetMs;
@@ -80,8 +81,9 @@ public class NpcService {
                       BuildService buildService, TrainService trainService, MovementRepository movements,
                       MovementService movementService, NobleService nobles, NpcTribeService npcTribes, TribeService tribeService, NpcMarketService npcMarket, NpcLogService npcLog,
                       NpcProfiles npcProfiles, NpcEconomy economy, NpcMilitary military, NpcDefence defence, NpcRhythm rhythm, WorldPoints worldPoints,
-                      NpcOverrunCooldown overrun, PlatformTransactionManager transactionManager, @Value("${game.npc-budget-ms:2500}") long budgetMs) {
+                      NpcOverrunCooldown overrun, PlayerWarService playerWars, PlatformTransactionManager transactionManager, @Value("${game.npc-budget-ms:2500}") long budgetMs) {
         this.tx = new TransactionTemplate(transactionManager);
+        this.playerWars = playerWars;
         this.budgetMs = budgetMs;
         this.defence = defence;
         this.rhythm = rhythm;
@@ -197,7 +199,11 @@ public class NpcService {
     private WorldView buildView(World world) {
         TransactionTemplate readOnly = new TransactionTemplate(tx.getTransactionManager());
         readOnly.setReadOnly(true);
-        return readOnly.execute(status -> WorldView.build(world, villages, movements, tribeService, worldPoints));
+        return readOnly.execute(status -> {
+            WorldView view = WorldView.build(world, villages, movements, tribeService, worldPoints);
+            view.wars(playerWars.enemiesByNpc(world));
+            return view;
+        });
     }
 
     private static Personality personality(Account npc) {
@@ -242,7 +248,7 @@ public class NpcService {
             if (economy.build(v, archetype, expanding(v, archetype, difficulty), difficulty, snap, rnd) == NpcEconomy.Build.NOTHING_LEFT && snap.build.size() < 2) {
                 build(v, snap, me); // the plan is finished: keep developing at random
             }
-            if (!recovering) economy.recruit(v, archetype, skill, difficulty, snap, view.from(v), view.underAttack(v), rnd);
+            if (!recovering) economy.recruit(v, archetype, skill, difficulty, snap, view.from(v), view.underAttack(v), view.hasEnemies(v.getOwner().getId()), rnd);
         }
         long t1 = System.nanoTime();
         educateNoble(v, archetype, difficulty, snap);
