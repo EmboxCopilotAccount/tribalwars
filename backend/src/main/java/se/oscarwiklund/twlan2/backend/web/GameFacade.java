@@ -32,6 +32,9 @@ import java.util.Map;
 @Component
 public class GameFacade {
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager; // to mark display-only copies read-only (ownVillages)
+
     private final VillageRepository villageRepository;
     private final BuildingRepository buildingRepository;
     private final BuildQueueItemRepository buildQueueItemRepository;
@@ -125,12 +128,14 @@ public class GameFacade {
     }
 
     // must run in a transaction: open-in-view is off, and a movement's units load lazily.
-    // Read-only and nothing saved: the settlement below is only for display (every write path settles first). Saving it
-    // locked this village and then every other own village (ownVillages), so two tabs on different villages locked
-    // the same rows in opposite order and H2 rolled one back as a deadlock victim (a 500, even after a successful order).
-    @Transactional(readOnly = true)
+    // Saves THIS village: the order endpoints hand in the (detached) village their service just charged, and this save is
+    // what persists that (BuildService.enqueue etc. do not save it themselves). The player's other villages are only
+    // settled for display and never saved (ownVillages): saving them too locked several rows in an order that differed
+    // between tabs, and H2 rolled one request back as a deadlock victim (#89).
+    @Transactional
     public VillageStateDto toDto(Village village) {
         villageService.settleResources(village);
+        villageRepository.save(village);
 
         int hqLevel = villageService.levelOf(village, BuildingType.HEADQUARTERS);
         double hqTimeFactor = WorldSettings.number(village.getWorld(), "buildMainFactor");
@@ -267,7 +272,8 @@ public class GameFacade {
         for (Village v : villageRepository.findByWorldAndOwner(current.getWorld(), current.getOwner())) {
             int points = 0;
             for (Building b : buildingRepository.findByVillage(v)) points += b.getType().points(b.getLevel());
-            // nothing is saved (see toDto), so this list's own copy of the current village needs settling too
+            // display only: never written back (see toDto), so no row lock on the other villages
+            if (!v.getId().equals(current.getId())) entityManager.unwrap(org.hibernate.Session.class).setReadOnly(v, true);
             villageService.settleResources(v);
             Map<String, Integer> home = new LinkedHashMap<>();
             for (UnitStock stock : unitStockRepository.findByVillage(v)) home.put(stock.getType().name(), stock.getCount());
