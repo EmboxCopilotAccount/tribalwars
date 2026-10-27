@@ -31,9 +31,12 @@ public class AchievementService {
     private final BuildingRepository buildings;
     private final TribeMemberRepository tribeMembers;
 
+    private final GameLock gameLock;
+
     public AchievementService(LiveUpdates live, WorldPoints worldPoints, AchievementCounterRepository counters, AchievementUnlockRepository unlocks,
                               DailyStatRepository dailyStats, AccountRepository accounts, WorldRepository worlds,
-                              VillageRepository villages, BuildingRepository buildings, TribeMemberRepository tribeMembers) {
+                              VillageRepository villages, BuildingRepository buildings, TribeMemberRepository tribeMembers, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.live = live;
         this.worldPoints = worldPoints;
         this.counters = counters;
@@ -279,6 +282,7 @@ public class AchievementService {
     @Scheduled(fixedDelayString = "${game.achievement-refresh-ms:30000}", initialDelay = 15000)
     @Transactional
     public void refresh() {
+        gameLock.holdForTransaction(); // until this sweep has committed
         for (World world : worlds.findAll()) {
             refreshRanks(world);
             awardDailyWinners(world);

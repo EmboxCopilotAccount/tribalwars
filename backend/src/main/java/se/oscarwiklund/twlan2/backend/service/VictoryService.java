@@ -40,9 +40,12 @@ public class VictoryService {
     private final MarketService marketService;
     private final ObjectMapper mapper;
 
+    private final GameLock gameLock;
+
     public VictoryService(WorldRepository worlds, WorldVictoryRepository victories, WorldVictoryTribeRepository tribeProgress,
                           VillageRepository villages, TribeRepository tribeRepository, TribeService tribeService,
-                          RankingService rankingService, MarketService marketService, ObjectMapper mapper) {
+                          RankingService rankingService, MarketService marketService, ObjectMapper mapper, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.worlds = worlds;
         this.victories = victories;
         this.tribeProgress = tribeProgress;
@@ -228,6 +231,7 @@ public class VictoryService {
     @Scheduled(fixedDelayString = "${game.victory-sweep-ms:600000}", initialDelay = 90000)
     @Transactional
     public void sweep() {
+        gameLock.holdForTransaction(); // until this sweep has committed
         long today = todayEpochDay();
         for (World world : worlds.findAll()) {
             try {

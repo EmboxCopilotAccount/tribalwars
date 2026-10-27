@@ -28,7 +28,10 @@ public class AbandonmentService {
     private final MarketService market;
     private final PlayerWarService playerWars;
 
-    public AbandonmentService(WorldRepository worlds, VillageRepository villages, MarketService market, PlayerWarService playerWars) {
+    private final GameLock gameLock;
+
+    public AbandonmentService(WorldRepository worlds, VillageRepository villages, MarketService market, PlayerWarService playerWars, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.worlds = worlds;
         this.villages = villages;
         this.market = market;
@@ -38,6 +41,7 @@ public class AbandonmentService {
     @Scheduled(fixedDelayString = "${game.abandon-sweep-ms:60000}", initialDelay = 30000)
     @Transactional
     public void sweep() {
+        gameLock.holdForTransaction(); // until this sweep has committed
         Instant now = Instant.now();
         for (World world : worlds.findAll()) {
             double minutes = WorldSettings.number(world, "leftVillagesGrow");

@@ -76,12 +76,15 @@ public class NpcService {
     private long lastSocial;
     private long nsView, nsEconomy, nsMilitary, nsOther, nsTribes, nsMarket; // where a tick spends its time (logged when it is slow)
 
+    private final GameLock gameLock;
+
     public NpcService(AccountRepository accounts, VillageRepository villages, BuildQueueItemRepository buildQueue,
                       TrainQueueItemRepository trainQueue, UnitStockRepository unitStock, VillageService villageService,
                       BuildService buildService, TrainService trainService, MovementRepository movements,
                       MovementService movementService, NobleService nobles, NpcTribeService npcTribes, TribeService tribeService, NpcMarketService npcMarket, NpcLogService npcLog,
                       NpcProfiles npcProfiles, NpcEconomy economy, NpcMilitary military, NpcDefence defence, NpcRhythm rhythm, WorldPoints worldPoints,
-                      NpcOverrunCooldown overrun, PlayerWarService playerWars, PlatformTransactionManager transactionManager, @Value("${game.npc-budget-ms:2500}") long budgetMs) {
+                      NpcOverrunCooldown overrun, PlayerWarService playerWars, PlatformTransactionManager transactionManager, @Value("${game.npc-budget-ms:2500}") long budgetMs, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.tx = new TransactionTemplate(transactionManager);
         this.playerWars = playerWars;
         this.budgetMs = budgetMs;
@@ -155,12 +158,12 @@ public class NpcService {
                     final NpcArchetype archetype = NpcArchetype.parse(profile.getArchetype());
                     final double skill = NpcProfiles.effectiveSkill(difficulty, profile.getSkill());
                     try {
-                        tx.executeWithoutResult(status -> {
+                        gameLock.run(() -> tx.executeWithoutResult(status -> {
                             Village fresh = villages.findById(v.getId()).orElse(null); // the copy this transaction works on
                             if (fresh != null && fresh.getOwner() != null && fresh.getOwner().getId().equals(npc.getId())) {
                                 step(fresh, me, archetype, skill, difficulty, view);
                             }
-                        });
+                        })); // one step at a time between requests and the game tick (GameLock)
                     } catch (RuntimeException e) {
                         LOG.warn("NPC {} stumbled in {}: {}", npc.getUsername(), v.getName(), e.toString()); // one NPC's mistake must not stop the others
                     }
@@ -173,7 +176,7 @@ public class NpcService {
             if (NpcDifficulty.of(w).notice() > 0) views.computeIfAbsent(w.getId(), id -> buildView(w));
         }
         try {
-            defence.react(views.values());
+            gameLock.run(() -> defence.react(views.values()));
         } catch (RuntimeException e) {
             LOG.warn("NPC defence failed: {}", e.toString());
         }
@@ -181,9 +184,9 @@ public class NpcService {
         if (System.currentTimeMillis() - lastSocial >= 4900) {
             lastSocial = System.currentTimeMillis();
             long tt = System.nanoTime();
-            npcTribes.tick();
+            gameLock.run(npcTribes::tick);
             long tm = System.nanoTime();
-            npcMarket.tick();
+            gameLock.run(npcMarket::tick);
             nsTribes = tm - tt;
             nsMarket = System.nanoTime() - tm;
         }

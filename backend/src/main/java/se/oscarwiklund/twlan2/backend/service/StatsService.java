@@ -28,8 +28,11 @@ public class StatsService {
     private final AchievementCounterRepository counters;
     private final AccountRepository accounts;
 
+    private final GameLock gameLock;
+
     public StatsService(WorldPoints worldPoints, StatSnapshotRepository snapshots, WorldRepository worlds, VillageRepository villages,
-                        BuildingRepository buildings, AchievementCounterRepository counters, AccountRepository accounts) {
+                        BuildingRepository buildings, AchievementCounterRepository counters, AccountRepository accounts, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.worldPoints = worldPoints;
         this.snapshots = snapshots;
         this.worlds = worlds;
@@ -42,6 +45,7 @@ public class StatsService {
     @Scheduled(fixedDelayString = "${game.stats-snapshot-ms:300000}", initialDelay = 20000)
     @Transactional
     public void snapshotAll() {
+        gameLock.holdForTransaction(); // until this sweep has committed
         for (World w : worlds.findAll()) snapshot(w);
         snapshots.deleteByTakenAtBefore(Instant.now().minus(KEEP));
     }

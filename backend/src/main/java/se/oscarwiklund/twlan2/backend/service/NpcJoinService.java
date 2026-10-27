@@ -33,7 +33,10 @@ public class NpcJoinService {
     private final NpcProfiles npcProfiles;
     private final Random rnd = new Random();
 
-    public NpcJoinService(WorldRepository worlds, AccountRepository accounts, WorldService worldService, NpcProfiles npcProfiles) {
+    private final GameLock gameLock;
+
+    public NpcJoinService(WorldRepository worlds, AccountRepository accounts, WorldService worldService, NpcProfiles npcProfiles, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.worlds = worlds;
         this.accounts = accounts;
         this.worldService = worldService;
@@ -43,6 +46,7 @@ public class NpcJoinService {
     @Scheduled(fixedDelayString = "${game.npc-join-sweep-ms:300000}", initialDelay = 60000)
     @Transactional
     public void sweep() {
+        gameLock.holdForTransaction(); // until this sweep has committed
         for (World world : worlds.findAll()) {
             double ageDays = ageDays(world);
             if (ageDays >= CLOSES_AFTER_DAYS) continue; // the world has closed to newcomers

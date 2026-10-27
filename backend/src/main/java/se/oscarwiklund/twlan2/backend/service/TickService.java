@@ -34,12 +34,15 @@ public class TickService {
     private final MarketService market;
     private final ReportService reports;
 
+    private final GameLock gameLock;
+
     public TickService(LiveUpdates live, BuildQueueItemRepository buildQueueItemRepository, BuildingRepository buildingRepository,
                         TrainQueueItemRepository trainQueueItemRepository, UnitStockRepository unitStockRepository,
                         MovementRepository movementRepository, VillageService villageService,
                         CombatService combatService, GameSettings settings, AchievementService achievements,
                         TrainQueues trainQueues, ResearchService research, TribeService tribes, SupportService support, MarketService market,
-                        ReportService reports) {
+                        ReportService reports, GameLock gameLock) {
+        this.gameLock = gameLock;
         this.reports = reports;
         this.live = live;
         this.market = market;
@@ -61,6 +64,7 @@ public class TickService {
     @Scheduled(fixedDelayString = "${game.tick-rate-ms:1000}")
     @Transactional
     public void tick() {
+        gameLock.holdForTransaction(); // until this tick has committed
         Instant now = Instant.now();
         processBuildQueues(now);
         processTrainQueues(now);
