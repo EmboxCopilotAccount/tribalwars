@@ -71,6 +71,11 @@ function inMode(r, mode) {
   }
 }
 
+// "conquers" for the battle that took the village, as in the original (#121)
+function battleVerb(r) {
+  return r.conquered ? "conquers" : "attacks";
+}
+
 // support and trade reports: the "from" village is the attacker side, the "to" village the defender side
 function reportSubject(r, fromName, toName) {
   switch (r.event) {
@@ -78,7 +83,7 @@ function reportSubject(r, fromName, toName) {
     case "SUPPORT_SENT_BACK": return `${toName} sent the support from ${fromName} back`;
     case "SUPPORT_WITHDRAWN": return `${attackerName(r)} (${fromName}) withdrew the support from ${toName}`;
     case "TRADE_DELIVERED": return `${fromName} delivers resources to ${toName}`;
-    default: return isBattle(r) ? `${attackerName(r)} (${fromName}) attacks ${toName}` : `${fromName} - ${toName}`;
+    default: return isBattle(r) ? `${attackerName(r)} (${fromName}) ${battleVerb(r)} ${toName}` : `${fromName} - ${toName}`;
   }
 }
 
@@ -613,7 +618,7 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
   const loot = { wood: haul.wood, stone: haul.clay, iron: haul.iron };
   const used = haul.total;
   const max = r.lootCapacity ?? used;
-  const subject = `${attackerName(r)} (${fromName}) attacks ${toName}`;
+  const subject = `${attackerName(r)} (${fromName}) ${battleVerb(r)} ${toName}`;
   // the battle as it was fought (luck, morale, night bonus, wall), so the simulator gives the report's result;
   // the defenders only when the report shows them
   const toSim = (e, att, def, wall) => {
