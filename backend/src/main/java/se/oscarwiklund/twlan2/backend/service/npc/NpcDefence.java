@@ -78,7 +78,7 @@ public class NpcDefence {
         int wall = buildings.findByVillageAndType(v, BuildingType.WALL).map(Building::getLevel).orElse(0);
         World world = v.getWorld();
         double basic = WorldSettings.number(world, "basicDefense");
-        double night = WorldSettings.isNight(world, java.time.LocalTime.now()) ? WorldSettings.number(world, "nightBonus") : 1;
+        double night = WorldSettings.nightFactor(world, attack.getArrivesAt()); // the battle is fought when it arrives
 
         double noise = 1 + d.intelNoise() * (2 * rnd.nextDouble() - 1) * 1.5;
         // the pace of the army gives away its slowest unit (scouts ~9 min/field, light cavalry 10, axes 18, rams 30)

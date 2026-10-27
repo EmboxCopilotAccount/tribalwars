@@ -134,7 +134,6 @@ public class NpcMilitary {
         double range = (12 + 20 * archetype.drive()) * (grudges.isEmpty() ? 1 : 1.4);
 
         double basicDefense = WorldSettings.number(world, "basicDefense");
-        double night = WorldSettings.isNight(world, java.time.LocalTime.now()) ? WorldSettings.number(world, "nightBonus") : 1;
         boolean moraleOn = !"off".equals(WorldSettings.get(world, "morale"));
         List<Strike> strikes = new ArrayList<>();
         List<Candidate> toScout = new ArrayList<>();
@@ -194,15 +193,18 @@ public class NpcMilitary {
                         : i != null && i.getLastLoot() > 0 ? 0.8 * i.getLastLoot() : 300;
                 if (conquerable && basis.equals("scouted") && seen.isEmpty()) {
                     // cleared and known: this is the moment for the noblemen
-                    var waves = ConquestPlan.waves(snobs, need, army, seen, wall, basicDefense, night, 1, margin);
+                    var waves = ConquestPlan.waves(snobs, need, army, seen, wall, basicDefense, nightFor(v, t, NOBLE, now), 1, margin);
                     if (waves != null) {
                         conquests.add(new Conquest(c, waves, c.weight()));
                         continue;
                     }
                 }
                 boolean rams = wall > 0 && (d.farming() || (i != null && i.getRaids() > 0));
-                Map<UnitType, Integer> forThis = new EnumMap<>(army);
-                var plan = AttackPlanner.plan(forThis, seen, wall, basicDefense, night, 1, margin, loot, d.farming() ? 0.3 : 0.5, rams);
+                Map<UnitType, Integer> seenHere = seen;
+                int wallHere = wall;
+                double marginHere = margin, lootHere = loot;
+                var plan = atArrival(v, t, army, now, n -> AttackPlanner.plan(new EnumMap<>(army), seenHere, wallHere, basicDefense, n, 1,
+                        marginHere, lootHere, d.farming() ? 0.3 : 0.5, rams));
                 if (plan == null) continue;
                 double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
                 double score = w * (1 + Math.min(loot, plan.carry()) / 500.0) / (d.farming() ? 1 + travelHours : 1);
@@ -264,20 +266,25 @@ public class NpcMilitary {
                     : i != null && i.getLastLoot() > 0 ? 0.8 * i.getLastLoot() : 300;
             double morale = moraleOn ? BattleCalculator.morale(view.pointsOf(me), view.pointsOf(t.getOwner())) : 1;
             if (conquerable && basis.equals("scouted") && seen.isEmpty()) {
-                var waves = ConquestPlan.waves(snobs, need, warArmy, seen, wall, basicDefense, night, morale, margin);
+                var waves = ConquestPlan.waves(snobs, need, warArmy, seen, wall, basicDefense, nightFor(v, t, NOBLE, now), morale, margin);
                 if (waves != null) {
                     conquests.add(new Conquest(c, waves, c.weight()));
                     continue;
                 }
             }
-            var plan = AttackPlanner.plan(new EnumMap<>(warArmy), seen, wall, basicDefense, night, morale, margin, loot, WAR_MAX_LOSS, wall > 0);
+            Map<UnitType, Integer> seenHere = seen;
+            int wallHere = wall;
+            double marginHere = margin, lootHere = loot;
+            var plan = atArrival(v, t, warArmy, now, n -> AttackPlanner.plan(new EnumMap<>(warArmy), seenHere, wallHere, basicDefense, n,
+                    morale, marginHere, lootHere, WAR_MAX_LOSS, wallHere > 0));
             if (plan != null) {
                 double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
                 warStrikes.add(new Strike(c, plan, "war, " + basis, w * (1 + Math.min(loot, plan.carry()) / 500.0) / (1 + travelHours)));
                 continue;
             }
             if (!near) continue;
-            var all = AttackPlanner.assault(warArmy, seen, wall, basicDefense, night, morale, ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE);
+            var all = atArrival(v, t, warArmy, now, n -> AttackPlanner.assault(warArmy, seenHere, wallHere, basicDefense, n, morale,
+                    ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE));
             if (all != null) {
                 double travelHours = MovementService.travelSeconds(v, t, all.send(), settings.travelSpeedOf(v)) / 3600.0;
                 assaults.add(new Strike(c, all, "war, full assault, " + basis, w / (1 + travelHours)));
@@ -333,6 +340,32 @@ public class NpcMilitary {
     // How many scouts to send at a war target whose garrison it does not know; 0: it does not scout it now and attacks on
     // a guess instead (no scouts wanted or at home, scouting it is paused after two failed runs in a row, or too few
     // scouts at home for a retry, which takes at least twice as many as the failed run).
+    private static final Map<UnitType, Integer> NOBLE = Map.of(UnitType.SNOB, 1); // the slowest unit of a conquest wave
+
+    // The night bonus where these troops would arrive: the battle is fought at their arrival time (CombatService).
+    private double nightFor(Village from, Village to, Map<UnitType, Integer> units, Instant now) {
+        long seconds = MovementService.travelSeconds(from, to, units, settings.travelSpeedOf(from));
+        return WorldSettings.nightFactor(from.getWorld(), now.plusSeconds(seconds));
+    }
+
+    // Plans with the night bonus at the arrival of the troops the plan picks. First by the slowest unit of the army; if
+    // the troops picked arrive at another hour, planned again for that hour. With nothing to send by night, it tries
+    // daytime, for fast troops that would still get there before the night.
+    private AttackPlanner.Plan atArrival(Village from, Village to, Map<UnitType, Integer> army, Instant now,
+                                         java.util.function.DoubleFunction<AttackPlanner.Plan> planWith) {
+        double first = nightFor(from, to, army, now);
+        AttackPlanner.Plan p = planWith.apply(first);
+        if (p != null) {
+            double there = nightFor(from, to, p.send(), now);
+            if (there <= first) return p; // as hard as planned, or easier
+            p = planWith.apply(there);
+            return p != null && nightFor(from, to, p.send(), now) <= there ? p : null;
+        }
+        if (first <= 1) return null;
+        p = planWith.apply(1);
+        return p != null && nightFor(from, to, p.send(), now) <= 1 ? p : null;
+    }
+
     private int warScouts(NpcDifficulty d, NpcIntel i, Account me, Village t, int scouts, double skill, Instant now) {
         if (!d.scouts() || scouts < MIN_SCOUTS) return 0;
         if (i != null && i.getScoutPausedUntil() != null) {

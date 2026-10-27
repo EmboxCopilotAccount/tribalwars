@@ -54,6 +54,8 @@ class NpcWarTargetingTest {
         world = worlds.createWorld("npc-war-test", 1);
         world.getSettings().put("beginnerProtection", "0");
         world.getSettings().put("morale", "off");
+        world.getSettings().put("nightStart", "00:00"); // no night: the plans do not depend on the test's clock
+        world.getSettings().put("nightEnd", "00:00");
         npc = account("npc", true);
         human = account("human", false);
         npcHome = village(npc, 100, 100);
@@ -235,6 +237,27 @@ class NpcWarTargetingTest {
         List<Movement> sent = step(npcHome, NpcDifficulty.NORMAL, NO_MOOD);
         assertEquals(1, sent.size());
         assertEquals(Map.of(UnitType.AXE, 900, UnitType.LIGHT, 270), sent.get(0).getUnits()); // the whole war army (90 %)
+    }
+
+    // The battle is fought when the troops arrive: a night starting while they are on the road counts (the plan used the
+    // hour it was made at, so a village that won by day was attacked at night with too little).
+    @Test
+    void itPlansWithTheNightBonusAtTheArrivalTime() {
+        playerWars.declare(human, npc.getUsername(), world);
+        intel.spy(world, npc, humanHome, 3, Map.of(UnitType.SPEAR, 300), 0, 0, 0, 0, 0);
+        List<Movement> byDay = to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome);
+        assertEquals(1, byDay.size());
+
+        java.time.format.DateTimeFormatter hhmm = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+        world.getSettings().put("nightStart", java.time.LocalTime.now().plusMinutes(10).format(hhmm)); // day now, night on arrival
+        world.getSettings().put("nightEnd", java.time.LocalTime.now().plusHours(6).format(hhmm));
+        world.getSettings().put("nightBonus", "2");
+        List<Movement> atNight = to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome);
+        assertEquals(1, atNight.size());
+        assertTrue(atNight.get(0).getArrivesAt().isAfter(Instant.now().plusSeconds(11 * 60)));
+        int day = byDay.get(0).getUnits().values().stream().mapToInt(Integer::intValue).sum();
+        int night = atNight.get(0).getUnits().values().stream().mapToInt(Integer::intValue).sum();
+        assertTrue(night > day, night + " troops at night vs " + day + " by day");
     }
 
     @Test

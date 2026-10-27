@@ -129,8 +129,9 @@ public class CombatService {
                 morale = BattleCalculator.morale(pointsOf(attackerOwner, world), pointsOf(previousOwner, world));
             }
             double luck = (ThreadLocalRandom.current().nextDouble() * 2 - 1) * BattleCalculator.MAX_LUCK;
-            // night bonus: the defenders fight harder while the world's clock is inside its night hours
-            double night = WorldSettings.isNight(world, java.time.LocalTime.now()) ? WorldSettings.number(world, "nightBonus") : 1;
+            // night bonus: the defenders fight harder when the attack arrives inside the world's night hours (its arrival
+            // time, not the tick's: the NPCs plan with it, and a late tick must not change the battle)
+            double night = WorldSettings.nightFactor(world, attack.getArrivesAt());
             // rams lower the wall the battle is fought at, and that damage stays whether the attack wins or not
             if (WorldSettings.bool(world, "destroyBuildings")) {
                 wallAfter = BattleCalculator.wallInBattle(attackerUnits.getOrDefault(UnitType.RAM, 0), wallBefore);

@@ -102,6 +102,11 @@ public final class WorldSettings {
         }
     }
 
+    // The night bonus of a battle fought at this moment: by the server's clock, like nightStart/nightEnd.
+    public static double nightFactor(World world, java.time.Instant at) {
+        return isNight(world, java.time.LocalTime.ofInstant(at, java.time.ZoneId.systemDefault())) ? number(world, "nightBonus") : 1;
+    }
+
     // Wraps past midnight.
     public static boolean isNight(World world, java.time.LocalTime now) {
         try {
