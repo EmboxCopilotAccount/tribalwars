@@ -138,6 +138,21 @@ class NpcWarTargetingTest {
         assertEquals(Map.of(UnitType.SCOUT, 15), sent.get(0).getUnits()); // max(4 + 6 * 0.6, 1.5 * 8 + 3)
     }
 
+    // An NPC with several villages: in one NPC tick each village took its turn before any scouts came back, so every one
+    // of them sent a party (all of them dying meant a burst of failed runs before the pause could stop it).
+    @Test
+    void oneScoutingPartyAtATimePerTarget() {
+        playerWars.declare(human, npc.getUsername(), world);
+        Village second = village(npc, 100, 103), third = village(npc, 97, 100);
+        arm(second, Map.of(UnitType.AXE, 1000, UnitType.LIGHT, 300, UnitType.SCOUT, 50));
+        arm(third, Map.of(UnitType.AXE, 1000, UnitType.LIGHT, 300, UnitType.SCOUT, 50));
+        WorldView view = WorldView.build(world, villages, movements, tribes, worldPoints);
+        view.wars(playerWars.enemiesByNpc(world));
+        for (Village v : List.of(npcHome, second, third)) military.step(v, NpcArchetype.BALANCED, NpcDifficulty.NORMAL.skill(), NpcDifficulty.NORMAL, view, NO_MOOD);
+        long parties = movements.findAll().stream().filter(m -> m.getTargetVillage().getId().equals(humanHome.getId()) && scoutsOnly(m)).count();
+        assertEquals(1, parties);
+    }
+
     @Test
     void failedScoutingIsRetriedDoubleThenPausedThenCountedAfresh() {
         playerWars.declare(human, npc.getUsername(), world);

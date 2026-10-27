@@ -253,6 +253,9 @@ public class NpcMilitary {
                 margin = 0.3 + d.intelNoise();
                 basis = "old report (saving)";
             } else {
+                // its scouts are already on the way here (from any of its villages): wait for their report; else each of
+                // its villages sent a party in the same tick, and dead ones counted as a burst of failed runs
+                if (scoutingAt(t, me, view)) continue;
                 int lost = i == null ? 0 : i.getLossStreak();
                 int scoutWith = lost > 0 ? 0 : warScouts(d, i, me, t, scouts, skill, now);
                 if (scoutWith > 0) {
@@ -344,6 +347,14 @@ public class NpcMilitary {
             int n = Math.min(scouts, Math.max((int) Math.round(4 + 6 * skill), (int) Math.ceil(1.5 * expected) + 3));
             sendScouts(v, me, c.target(), n, view);
         }
+    }
+
+    private static boolean scoutingAt(Village t, Account me, WorldView view) {
+        for (Movement m : view.targeting(t)) {
+            if (m.getType() == MovementType.ATTACK && me.getId().equals(m.getOriginVillage().getOwner().getId())
+                    && m.getUnits().keySet().equals(Set.of(UnitType.SCOUT))) return true;
+        }
+        return false;
     }
 
     private static double attackPower(Map<UnitType, Integer> army) {
