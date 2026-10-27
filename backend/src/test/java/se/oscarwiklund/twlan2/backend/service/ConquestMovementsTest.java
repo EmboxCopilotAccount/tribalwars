@@ -32,6 +32,7 @@ class ConquestMovementsTest {
     @Autowired VillageService villageService;
     @Autowired TickService tick;
     @Autowired NobleService nobles;
+    @Autowired SupportService support;
     @Autowired ResearchQueueItemRepository researchQueue;
 
     World world;
@@ -112,6 +113,24 @@ class ConquestMovementsTest {
         NobleService.Info info = nobles.info(attackerHome.getOwner(), world);
         assertEquals(0, info.existing());
         assertEquals(1, info.conquered());
+    }
+
+    // A later wave lands on the village its own player conquered meanwhile: it stays as support, still counted on the
+    // sending village's farm and withdrawable, instead of moving in and overfilling the new village's farm (#120).
+    @Test
+    void aWaveArrivingAfterTheConquestStaysAsSupport() {
+        conquerTarget();
+        int targetPopBefore = villageService.populationUsed(villages.findById(target.getId()).orElseThrow());
+        send(attackerHome, target, MovementType.ATTACK, Map.of(UnitType.AXE, 300), Instant.now().minusSeconds(1));
+        tick.tick();
+
+        Village conquered = villages.findById(target.getId()).orElseThrow();
+        assertEquals(0, stocks.findByVillageAndType(conquered, UnitType.AXE).map(UnitStock::getCount).orElse(0));
+        List<StationedTroops> guests = support.guestsAt(conquered);
+        assertEquals(1, guests.size());
+        assertEquals(attackerHome.getId(), guests.get(0).getOriginVillage().getId());
+        assertEquals(300, guests.get(0).getUnits().get(UnitType.AXE));
+        assertEquals(targetPopBefore, villageService.populationUsed(conquered));
     }
 
     private Village camp() {

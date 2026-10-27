@@ -222,9 +222,18 @@ public class TickService {
             } else if (movement.getType() == MovementType.ATTACK && !movement.isSelfAttack()
                     && movement.getTargetVillage().getOwner() != null && movement.getOriginVillage().getOwner() != null
                     && movement.getTargetVillage().getOwner().getId().equals(movement.getOriginVillage().getOwner().getId())) {
-                // the target was conquered (by this very player) while the troops were on their way: they move in
-                for (Map.Entry<UnitType, Integer> e : movement.getUnits().entrySet()) {
-                    addUnits(movement.getTargetVillage(), e.getKey(), e.getValue());
+                // the target was conquered (by this very player) while the troops were on their way: a player's troops stay
+                // as support (still the sending village's, its farm, withdrawable - as in the original; moving them in for
+                // good overfilled the new village's small farm, #120); NPCs move them in like their own support (see above)
+                Village origin = movement.getOriginVillage();
+                Village target = movement.getTargetVillage();
+                if (origin.getOwner().isNpc()) {
+                    for (Map.Entry<UnitType, Integer> e : movement.getUnits().entrySet()) {
+                        addUnits(target, e.getKey(), e.getValue());
+                    }
+                } else {
+                    support.station(origin, target, movement.getUnits());
+                    reports.support(ReportService.SUPPORT_ARRIVED, origin, target, movement.getUnits());
                 }
                 movementRepository.delete(movement);
             } else if (movement.getType() == MovementType.ATTACK) {

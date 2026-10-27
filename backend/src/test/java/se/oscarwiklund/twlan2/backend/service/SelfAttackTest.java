@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Attacking one of your own villages (world setting attackSelf) is a real battle; only troops whose target was
-// conquered while they were on the road move in.
+// conquered while they were on the road skip the battle and stay there as support (ConquestMovementsTest).
 @SpringBootTest
 @Transactional
 class SelfAttackTest {
