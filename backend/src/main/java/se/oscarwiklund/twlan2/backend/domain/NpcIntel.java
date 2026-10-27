@@ -42,6 +42,10 @@ public class NpcIntel {
     private Integer failedScouts;
     private Integer scoutsSent;
     private Instant scoutPausedUntil;
+    // Added for #123, nullable too: the attack power of the NPC's war army when a scouted garrison here was too strong for
+    // it, and since when. While it saves up it plans on that report instead of scouting the village again and again.
+    private Double savingPower;
+    private Instant savingSince;
 
     public Long getId() { return id; }
     public Long getWorldId() { return worldId; }
@@ -82,4 +86,8 @@ public class NpcIntel {
     public void setScoutsSent(int scoutsSent) { this.scoutsSent = scoutsSent; }
     public Instant getScoutPausedUntil() { return scoutPausedUntil; }
     public void setScoutPausedUntil(Instant scoutPausedUntil) { this.scoutPausedUntil = scoutPausedUntil; }
+    public Double getSavingPower() { return savingPower; }
+    public void setSavingPower(Double savingPower) { this.savingPower = savingPower; }
+    public Instant getSavingSince() { return savingSince; }
+    public void setSavingSince(Instant savingSince) { this.savingSince = savingSince; }
 }

@@ -222,6 +222,7 @@ public class NpcMilitary {
         List<Strike> assaults = new ArrayList<>();
         List<Scouting> warScouts = new ArrayList<>();
         Candidate savingFor = null;
+        double warPower = attackPower(warArmy);
         for (Village t : war) {
             double dist = distance(v, t);
             boolean last = view.villageCount(t.getOwner()) <= 1;
@@ -245,6 +246,12 @@ public class NpcMilitary {
                 wall = i.getWall() == null ? 0 : i.getWall();
                 margin = d.intelNoise();
                 basis = "scouted";
+            } else if (NpcIntelService.saving(i, warPower, speed, now)) {
+                // too strong when it was scouted, and the army has not grown much since: no new scouts (#123)
+                seen = NpcIntelService.parse(i.getTroops());
+                wall = i.getWall() == null ? 0 : i.getWall();
+                margin = 0.3 + d.intelNoise();
+                basis = "old report (saving)";
             } else {
                 int lost = i == null ? 0 : i.getLossStreak();
                 int scoutWith = lost > 0 ? 0 : warScouts(d, i, me, t, scouts, skill, now);
@@ -282,6 +289,8 @@ public class NpcMilitary {
                 warStrikes.add(new Strike(c, plan, "war, " + basis, w * (1 + Math.min(loot, plan.carry()) / 500.0) / (1 + travelHours)));
                 continue;
             }
+            // too strong on what the scouts saw: it saves up instead of scouting it again each time the report goes stale
+            if (basis.equals("scouted") && !seen.isEmpty()) intel.tooStrong(me.getId(), t.getId(), warPower);
             if (!near) continue;
             var all = atArrival(v, t, warArmy, now, n -> AttackPlanner.assault(warArmy, seenHere, wallHere, basicDefense, n, morale,
                     ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE));
@@ -337,9 +346,12 @@ public class NpcMilitary {
         }
     }
 
-    // How many scouts to send at a war target whose garrison it does not know; 0: it does not scout it now and attacks on
-    // a guess instead (no scouts wanted or at home, scouting it is paused after two failed runs in a row, or too few
-    // scouts at home for a retry, which takes at least twice as many as the failed run).
+    private static double attackPower(Map<UnitType, Integer> army) {
+        double sum = 0;
+        for (var e : army.entrySet()) sum += (double) e.getKey().attack * e.getValue();
+        return sum;
+    }
+
     private static final Map<UnitType, Integer> NOBLE = Map.of(UnitType.SNOB, 1); // the slowest unit of a conquest wave
 
     // The night bonus where these troops would arrive: the battle is fought at their arrival time (CombatService).
@@ -366,6 +378,9 @@ public class NpcMilitary {
         return p != null && nightFor(from, to, p.send(), now) <= 1 ? p : null;
     }
 
+    // How many scouts to send at a war target whose garrison it does not know; 0: it does not scout it now and attacks on
+    // a guess instead (no scouts wanted or at home, scouting it is paused after two failed runs in a row, or too few
+    // scouts at home for a retry, which takes at least twice as many as the failed run).
     private int warScouts(NpcDifficulty d, NpcIntel i, Account me, Village t, int scouts, double skill, Instant now) {
         if (!d.scouts() || scouts < MIN_SCOUTS) return 0;
         if (i != null && i.getScoutPausedUntil() != null) {

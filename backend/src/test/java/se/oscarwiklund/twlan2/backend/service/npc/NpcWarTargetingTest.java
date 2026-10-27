@@ -239,6 +239,26 @@ class NpcWarTargetingTest {
         assertEquals(Map.of(UnitType.AXE, 900, UnitType.LIGHT, 270), sent.get(0).getUnits()); // the whole war army (90 %)
     }
 
+    // #123: a village too strong to attack is not scouted again each time the report goes stale while the NPC saves up;
+    // only once its army has grown (or a world day has passed) it looks again.
+    @Test
+    void savingUpItDoesNotScoutTheSameVillageAgainAndAgain() {
+        playerWars.declare(human, npc.getUsername(), world);
+        intel.spy(world, npc, humanHome, 3, Map.of(UnitType.SPEAR, 50000, UnitType.SWORD, 50000), 0, 0, 0, 0, 15);
+        assertTrue(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD).isEmpty()); // too strong: saving up
+
+        NpcIntel row = intelRows.findByAccountIdAndTargetVillageId(npc.getId(), humanHome.getId()).orElseThrow();
+        assertNotNull(row.getSavingPower());
+        row.setSeenAt(Instant.now().minusSeconds(3 * 3600)); // the report is stale now
+        intelRows.save(row);
+        assertTrue(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD).isEmpty()); // still saving, no scouts
+
+        arm(npcHome, Map.of(UnitType.AXE, 1500, UnitType.LIGHT, 300, UnitType.SCOUT, 50)); // the army has grown
+        List<Movement> sent = to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome);
+        assertEquals(1, sent.size());
+        assertTrue(scoutsOnly(sent.get(0))); // a fresh look
+    }
+
     // The battle is fought when the troops arrive: a night starting while they are on the road counts (the plan used the
     // hour it was made at, so a village that won by day was attacked at night with too little).
     @Test

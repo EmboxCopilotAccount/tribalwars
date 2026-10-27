@@ -20,6 +20,9 @@ public class NpcIntelService {
     // A picture of a garrison is trusted for this many *world* seconds (real time divided by the world speed).
     public static final double FRESH_WORLD_SECONDS = 5400;
     public static final double MAX_GRUDGE = 5;
+    // a war target too strong for the NPC is not scouted again for this many world hours, or until its army is this much stronger
+    public static final double SAVING_WORLD_HOURS = 24;
+    public static final double SAVING_GROWTH = 1.25;
 
     private final NpcIntelRepository intel;
     private final NpcGrudgeRepository grudges;
@@ -66,6 +69,14 @@ public class NpcIntelService {
         return worldSeconds <= FRESH_WORLD_SECONDS;
     }
 
+    // Saving up for a war target that was too strong (#123): its old report stands in for fresh scouting until the army
+    // has grown by SAVING_GROWTH or SAVING_WORLD_HOURS have passed (world hours, speed capped at 50 like fresh()).
+    public static boolean saving(NpcIntel i, double armyPower, double worldSpeed, Instant now) {
+        if (i == null || i.getSavingPower() == null || i.getSavingSince() == null || i.getTroops() == null) return false;
+        double hours = Duration.between(i.getSavingSince(), now).toMillis() / 3_600_000.0 * Math.min(50, Math.max(1, worldSpeed));
+        return hours < SAVING_WORLD_HOURS && armyPower < SAVING_GROWTH * i.getSavingPower();
+    }
+
     // A grudge fades with a half-life of 12 world hours (real time / speed, speed capped at 50).
     public static double decayed(double score, Instant updatedAt, double worldSpeed, Instant now) {
         double hours = Duration.between(updatedAt, now).toMillis() / 3_600_000.0 * Math.min(50, Math.max(1, worldSpeed));
@@ -100,7 +111,11 @@ public class NpcIntelService {
         i.setSeenAt(Instant.now());
         if (level >= 1) { i.setWood((int) wood); i.setClay((int) clay); i.setIron((int) iron); }
         if (level >= 2 && wall != null) i.setWall(wall);
-        if (level >= 3) i.setTroops(format(homeTroops));
+        if (level >= 3) {
+            i.setTroops(format(homeTroops));
+            i.setSavingPower(null); // a new picture: judged afresh
+            i.setSavingSince(null);
+        }
         else if (i.getTroops() != null) i.setTroops(null); // no garrison seen: not enough to attack on
         scoutRun(world, i, level >= 3, scoutsSent);
         intel.save(i);
@@ -130,6 +145,17 @@ public class NpcIntelService {
         }
     }
 
+    // A scouted war target is too strong to attack: remember the army's power the first time, see saving().
+    @Transactional
+    public void tooStrong(Long accountId, Long targetVillageId, double armyPower) {
+        intel.findByAccountIdAndTargetVillageId(accountId, targetVillageId).ifPresent(i -> {
+            if (i.getSavingPower() != null) return;
+            i.setSavingPower(armyPower);
+            i.setSavingSince(Instant.now());
+            intel.save(i);
+        });
+    }
+
     // The scouting pause is over: start counting failed runs afresh.
     @Transactional
     public void resumeScouting(Long accountId, Long targetVillageId) {
@@ -147,6 +173,8 @@ public class NpcIntelService {
         Instant now = Instant.now();
         i.setLastAttackAt(now);
         i.setRaids(i.getRaids() + 1);
+        i.setSavingPower(null); // it attacked: no longer saving up
+        i.setSavingSince(null);
         if (won) {
             i.setSource("BATTLE");
             i.setSeenAt(now);
