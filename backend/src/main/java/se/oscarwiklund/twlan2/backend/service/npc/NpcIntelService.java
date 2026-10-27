@@ -3,6 +3,7 @@ package se.oscarwiklund.twlan2.backend.service.npc;
 import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.NpcGrudgeRepository;
 import se.oscarwiklund.twlan2.backend.repo.NpcIntelRepository;
+import se.oscarwiklund.twlan2.backend.repo.VillageRepository;
 import se.oscarwiklund.twlan2.backend.service.WorldSettings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,12 @@ public class NpcIntelService {
 
     private final NpcIntelRepository intel;
     private final NpcGrudgeRepository grudges;
+    private final VillageRepository villages;
 
-    public NpcIntelService(NpcIntelRepository intel, NpcGrudgeRepository grudges) {
+    public NpcIntelService(NpcIntelRepository intel, NpcGrudgeRepository grudges, VillageRepository villages) {
         this.intel = intel;
         this.grudges = grudges;
+        this.villages = villages;
     }
 
     // ---- pure helpers ----------------------------------------------------------------------------------------------
@@ -117,7 +120,7 @@ public class NpcIntelService {
             i.setSavingSince(null);
         }
         else if (i.getTroops() != null) i.setTroops(null); // no garrison seen: not enough to attack on
-        scoutRun(world, i, level >= 3, scoutsSent);
+        scoutRun(world, npc, target, i, level >= 3, scoutsSent);
         intel.save(i);
     }
 
@@ -125,13 +128,15 @@ public class NpcIntelService {
     @Transactional
     public void scoutsLost(World world, Account npc, Village target, int scoutsSent) {
         NpcIntel i = row(world, npc, target);
-        scoutRun(world, i, false, scoutsSent);
+        scoutRun(world, npc, target, i, false, scoutsSent);
         intel.save(i);
     }
 
-    // Counts scouting runs that saw no garrison in a row; the second one pauses scouting the village for the world's
-    // warScoutPauseHours (NpcMilitary honours the pause for war targets). A run that saw the garrison ends both.
-    private static void scoutRun(World world, NpcIntel i, boolean sawGarrison, int scoutsSent) {
+    // Counts scouting runs that saw no garrison in a row. They count per player: scouts that die at one of a player's
+    // villages die at the others too, and counted per village a player with 10 villages saw 20 dead parties before the
+    // pause. Two failed runs at any of the player's villages pause scouting all of them for the world's
+    // warScoutPauseHours (NpcMilitary honours the pause for war targets). A run that saw the garrison resets its village.
+    private void scoutRun(World world, Account npc, Village target, NpcIntel i, boolean sawGarrison, int scoutsSent) {
         i.setScoutsSent(scoutsSent);
         if (sawGarrison) {
             i.setFailedScouts(0);
@@ -139,9 +144,23 @@ public class NpcIntelService {
             return;
         }
         i.setFailedScouts(i.getFailedScouts() + 1);
-        if (i.getFailedScouts() >= 2 && i.getScoutPausedUntil() == null) {
-            double hours = Math.max(0, WorldSettings.number(world, "warScoutPauseHours"));
-            i.setScoutPausedUntil(Instant.now().plusMillis(Math.round(hours * 3_600_000)));
+        Instant now = Instant.now();
+        List<Village> theirs = target.getOwner() == null ? List.of(target)
+                : villages.findByOwner(target.getOwner()).stream().filter(v -> world.getId().equals(v.getWorld().getId())).toList();
+        Set<Long> ids = new HashSet<>();
+        for (Village v : theirs) ids.add(v.getId());
+        int failed = i.getFailedScouts();
+        for (NpcIntel other : intel.findByAccountId(npc.getId())) {
+            if (ids.contains(other.getTargetVillageId()) && !other.getTargetVillageId().equals(target.getId())) failed += other.getFailedScouts();
+        }
+        if (failed < 2) return;
+        double hours = Math.max(0, WorldSettings.number(world, "warScoutPauseHours"));
+        Instant until = now.plusMillis(Math.round(hours * 3_600_000));
+        for (Village v : theirs) {
+            NpcIntel r = v.getId().equals(target.getId()) ? i : row(world, npc, v);
+            if (r.getScoutPausedUntil() != null && r.getScoutPausedUntil().isAfter(now)) continue; // already paused
+            r.setScoutPausedUntil(until);
+            if (r != i) intel.save(r);
         }
     }
 

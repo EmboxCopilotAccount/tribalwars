@@ -138,6 +138,21 @@ class NpcWarTargetingTest {
         assertEquals(Map.of(UnitType.SCOUT, 15), sent.get(0).getUnits()); // max(4 + 6 * 0.6, 1.5 * 8 + 3)
     }
 
+    // Failed scouting runs count per player (live: a player with 10 villages, a dead party at one village after the other):
+    // two dead parties at any two of the player's villages pause scouting all of them.
+    @Test
+    void failedRunsCountPerPlayerNotPerVillage() {
+        playerWars.declare(human, npc.getUsername(), world);
+        Village second = village(human, 103, 103), third = village(human, 100, 97);
+        intel.scoutsLost(world, npc, humanHome, 15);
+        intel.scoutsLost(world, npc, second, 15);
+
+        NpcIntel untouched = intelRows.findByAccountIdAndTargetVillageId(npc.getId(), third.getId()).orElseThrow();
+        assertNotNull(untouched.getScoutPausedUntil());
+        List<Movement> sent = step(npcHome, NpcDifficulty.NORMAL, NO_MOOD);
+        assertTrue(sent.stream().noneMatch(NpcWarTargetingTest::scoutsOnly), "no scouts while the player's villages are paused");
+    }
+
     // An NPC with several villages: in one NPC tick each village took its turn before any scouts came back, so every one
     // of them sent a party (all of them dying meant a burst of failed runs before the pause could stop it).
     @Test
