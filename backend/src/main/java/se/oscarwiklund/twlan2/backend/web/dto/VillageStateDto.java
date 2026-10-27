@@ -77,8 +77,9 @@ public record VillageStateDto(
     public record BuildingDto(String type, int level, int maxLevel, boolean maxedOrQueued,
                                int nextWood, int nextClay, int nextIron, long nextSeconds,
                                int nextPop, boolean requirementsMet,
-                               // demolition (HQ "Demolish"): one is queued; the next one would take this long, 0 = not possible
-                               boolean demolishing, long demolishSeconds) {}
+                               // demolition (HQ "Demolish"): one is queued; the next one would take this long, 0 = not possible;
+                               // the farm space it frees (the population of the level it takes away)
+                               boolean demolishing, long demolishSeconds, int demolishPop) {}
 
     // popIncrease: the farm space the order takes once built (already reserved: BuildService counts it as used)
     public record BuildQueueDto(String type, int targetLevel, Instant startedAt, Instant completesAt, Long id, long durationSeconds,

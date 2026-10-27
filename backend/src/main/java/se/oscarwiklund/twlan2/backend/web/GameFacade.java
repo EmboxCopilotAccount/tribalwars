@@ -162,7 +162,7 @@ public class GameFacade {
                     maxed ? 0 : type.popIncrease(targetLevel),
                     type.requirements().entrySet().stream()
                             .allMatch(r -> villageService.levelOf(village, r.getKey()) >= r.getValue()),
-                    demolitions > 0, demolishSeconds);
+                    demolitions > 0, demolishSeconds, demolishSeconds > 0 ? type.popIncrease(down) : 0);
         }).toList();
 
         List<BuildQueueDto> buildQueueDtos = queue.stream()

@@ -374,7 +374,8 @@ function DemolishTable({ village, onDemolish }) {
     .filter((r) => r.dto?.demolishSeconds > 0);
   const demolish = (e, r) => {
     e.preventDefault();
-    confirmBox(`Demolish ${B[r.id].name} to level ${r.down - 1}? Nothing is refunded.`, () => onDemolish?.(B[r.id].type));
+    const pop = r.dto.demolishPop > 0 ? ` Frees ${r.dto.demolishPop} farm space; no resources are refunded.` : " No resources are refunded.";
+    confirmBox(`Demolish ${B[r.id].name} to level ${r.down - 1}?${pop}`, () => onDemolish?.(B[r.id].type));
   };
   return (
     <>
@@ -383,7 +384,8 @@ function DemolishTable({ village, onDemolish }) {
           <tr>
             <th width="220">Demolish</th>
             <th width="100">Duration</th>
-            <th>Lower one level, nothing is refunded</th>
+            <th width="100">Farm space</th>
+            <th>Lower one level, no resources are refunded</th>
           </tr>
           {rows.map((r) => (
             <tr key={r.id}>
@@ -395,6 +397,10 @@ function DemolishTable({ village, onDemolish }) {
                 <span className="icon header time"></span>
                 {fmtDuration(r.dto.demolishSeconds * 1000)}
               </td>
+              <td title="Farm space freed when the demolition is done">
+                <span className="icon header population"></span>
+                {r.dto.demolishPop > 0 ? `+${r.dto.demolishPop}` : "0"}
+              </td>
               <td>
                 <a href="#" className="btn" onClick={(e) => demolish(e, r)}>{`Demolish to level ${r.down - 1}`}</a>
               </td>
@@ -402,7 +408,7 @@ function DemolishTable({ village, onDemolish }) {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan="3" className="inactive">No building can be demolished right now.</td>
+              <td colSpan="4" className="inactive">No building can be demolished right now.</td>
             </tr>
           )}
         </tbody>

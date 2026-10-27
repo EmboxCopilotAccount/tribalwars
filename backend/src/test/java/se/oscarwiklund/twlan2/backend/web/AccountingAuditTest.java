@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// Farm and market accounting (#75, #76, #124): every order goes through GameLockFilter and the real controller,
+// Farm and market accounting (#75, #76, #82, #124): every order goes through GameLockFilter and the real controller,
 // every check re-reads the database. Not @Transactional, see OrdersChargeTest.
 @SpringBootTest
 class AccountingAuditTest {
@@ -40,6 +40,7 @@ class AccountingAuditTest {
     @Autowired TransactionTemplate tx;
     @Autowired GameLockFilter lockFilter;
     @Autowired GameLock gameLock;
+    @Autowired GameFacade facade;
 
     World world;
     Account alice, bob;
@@ -225,5 +226,16 @@ class AccountingAuditTest {
                 "every accepted order is paid for (" + accepted.get() + " accepted)");
         assertEquals(1, accepted.get(), "orders accepted; population " + used + " / " + villageService.populationCapacity(db(a)));
         assertTrue(used <= villageService.populationCapacity(db(a)));
+    }
+
+    @Test
+    void demolishingTellsTheFarmSpaceItFrees() {
+        level(a, BuildingType.HEADQUARTERS, 20);
+        level(a, BuildingType.BARRACKS, 5);
+        as(alice);
+        var dto = tx.execute(s -> facade.toDto(db(a)));
+        var barracks = dto.buildings().stream().filter(x -> x.type().equals("BARRACKS")).findFirst().orElseThrow();
+        assertTrue(barracks.demolishPop() > 0);
+        assertEquals(BuildingType.BARRACKS.popIncrease(5), barracks.demolishPop());
     }
 }
