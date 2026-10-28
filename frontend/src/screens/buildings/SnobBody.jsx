@@ -229,7 +229,7 @@ function TrainMode({ village, level, popup, onTrain, onCancelTrain, onMoveTrain,
   );
 }
 
-function CoinMode({ village, onMintCoin }) {
+function CoinMode({ village, go, onMintCoin }) {
   const COIN = coinCost(village);
   const live = useLiveRes(village);
   const [pageSize, setPageSize] = useState(5);
@@ -347,7 +347,7 @@ function CoinMode({ village, onMintCoin }) {
           {villages.map((v) => (
             <tr key={v.id} className={vid === v.id ? "selected" : undefined} id={`village_${v.id}`}>
               <td>
-                <a href="#" onClick={(e) => e.preventDefault()}>
+                <a href="#" onClick={(e) => (go ? go(e, "info_village:" + v.id) : e.preventDefault())}>
                   {v.name}
                 </a>
               </td>
@@ -451,7 +451,7 @@ export function SnobBody({ village, mode, go, onTrain, onCancelTrain, onMoveTrai
               {current === "train" ? (
                 <TrainMode village={village} level={level} popup={popup} onTrain={onTrain} onCancelTrain={onCancelTrain} onMoveTrain={onMoveTrain} onMintCoin={onMintCoin} />
               ) : (
-                <CoinMode village={village} onMintCoin={onMintCoin} />
+                <CoinMode village={village} go={go} onMintCoin={onMintCoin} />
               )}
             </td>
           </tr>
