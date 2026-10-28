@@ -114,6 +114,8 @@ public final class WorldView {
 
     public Tribe tribeOf(Account owner) { return owner == null ? null : tribeByAccount.get(owner.getId()); }
 
+    public List<Village> villagesOfOwner(Long ownerId) { return byOwner.getOrDefault(ownerId, List.of()); }
+
     // ---- wars between players and NPCs ----
 
     public void wars(Map<Long, Set<Long>> enemiesByNpc) { this.enemiesByNpc = enemiesByNpc == null ? Map.of() : enemiesByNpc; }

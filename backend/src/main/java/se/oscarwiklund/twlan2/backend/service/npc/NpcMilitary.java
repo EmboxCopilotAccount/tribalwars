@@ -16,7 +16,8 @@ import java.util.*;
 // MovementService, so the rules are the players' rules.
 // Real players are only attacked at war (PlayerWarService, #118): then every village of the enemy is a target at any
 // distance (the close ones first), the NPC acts on every step it gets, and a village near the enemy that cannot win
-// safely sends a full assault or saves up for one instead of scouting again and again.
+// safely sends a full assault or saves up for one instead of scouting again and again. War attacks are paced: at most
+// warAttacksPerHour land on a player within any hour (WarPace, all NPCs together), none lands at night (warNoNightAttacks).
 @Service
 public class NpcMilitary {
 
@@ -35,16 +36,18 @@ public class NpcMilitary {
     private final NpcIntelService intel;
     private final NpcLogService npcLog;
     private final GameSettings settings;
+    private final WarPace pace;
     // village -> the war target it is saving up for (so the NPC log notes it once, not on every step)
     private final Map<Long, Long> saving = new java.util.concurrent.ConcurrentHashMap<>();
 
     public NpcMilitary(UnitStockRepository unitStock, MovementService movementService,
-                       NpcIntelService intel, NpcLogService npcLog, GameSettings settings) {
+                       NpcIntelService intel, NpcLogService npcLog, GameSettings settings, WarPace pace) {
         this.unitStock = unitStock;
         this.movementService = movementService;
         this.intel = intel;
         this.npcLog = npcLog;
         this.settings = settings;
+        this.pace = pace;
     }
 
     private record Candidate(Village target, double weight, boolean human, boolean barbarian, boolean lastOfHuman) {}
@@ -123,7 +126,7 @@ public class NpcMilitary {
 
         double chance = d.raidChance() * archetype.drive() * (0.5 + skill);
         boolean mood = rnd.nextDouble() <= chance;
-        if (!conquestReady && !mood && !atWar) return; // at war it acts on every step (no mood roll for the war)
+        if (!conquestReady && !mood && !atWar) return; // at war it acts on every step (no mood roll; WarPace limits what lands)
         boolean act = mood || rnd.nextDouble() < chance * 4; // a conquering NPC clears and scouts its target faster
         // raids on barbarians and NPCs (and conquests) keep their mood: a war does not make an NPC farm more
         boolean ordinary = (conquestReady || mood) && !(power < 400 && !(scoutOnlyPossible && power > 0) && !conquestReady);
@@ -223,6 +226,7 @@ public class NpcMilitary {
         List<Scouting> warScouts = new ArrayList<>();
         Candidate savingFor = null;
         double warPower = attackPower(warArmy);
+        boolean dayOnly = WorldSettings.bool(world, "warNoNightAttacks");
         for (Village t : war) {
             double dist = distance(v, t);
             boolean last = view.villageCount(t.getOwner()) <= 1;
@@ -275,7 +279,8 @@ public class NpcMilitary {
             double loot = i != null && i.getWood() != null ? 0.9 * (i.getWood() + i.getClay() + i.getIron())
                     : i != null && i.getLastLoot() > 0 ? 0.8 * i.getLastLoot() : 300;
             double morale = moraleOn ? BattleCalculator.morale(view.pointsOf(me), view.pointsOf(t.getOwner())) : 1;
-            if (conquerable && basis.equals("scouted") && seen.isEmpty()) {
+            if (conquerable && basis.equals("scouted") && seen.isEmpty()
+                    && !(dayOnly && landsAtNight(v, t, NOBLE, now)) && pace.allows(view, t.getOwner().getId(), arrival(v, t, NOBLE, now), now)) {
                 var waves = ConquestPlan.waves(snobs, need, warArmy, seen, wall, basicDefense, nightFor(v, t, NOBLE, now), morale, margin);
                 if (waves != null) {
                     conquests.add(new Conquest(c, waves, c.weight()));
@@ -285,9 +290,12 @@ public class NpcMilitary {
             Map<UnitType, Integer> seenHere = seen;
             int wallHere = wall;
             double marginHere = margin, lootHere = loot;
-            var plan = atArrival(v, t, warArmy, now, n -> AttackPlanner.plan(new EnumMap<>(warArmy), seenHere, wallHere, basicDefense, n,
-                    morale, marginHere, lootHere, WAR_MAX_LOSS, wallHere > 0));
+            java.util.function.DoubleFunction<AttackPlanner.Plan> strikeWith = n -> AttackPlanner.plan(new EnumMap<>(warArmy), seenHere, wallHere,
+                    basicDefense, n, morale, marginHere, lootHere, WAR_MAX_LOSS, wallHere > 0);
+            var plan = atArrival(v, t, warArmy, now, strikeWith);
             if (plan != null) {
+                plan = dayOnly ? byDay(v, t, plan, now, strikeWith) : plan;
+                if (plan == null || !pace.allows(view, t.getOwner().getId(), arrival(v, t, plan.send(), now), now)) continue; // waits for the day / its turn
                 double travelHours = MovementService.travelSeconds(v, t, plan.send(), settings.travelSpeedOf(v)) / 3600.0;
                 warStrikes.add(new Strike(c, plan, "war, " + basis, w * (1 + Math.min(loot, plan.carry()) / 500.0) / (1 + travelHours)));
                 continue;
@@ -295,9 +303,12 @@ public class NpcMilitary {
             // too strong on what the scouts saw: it saves up instead of scouting it again each time the report goes stale
             if (basis.equals("scouted") && !seen.isEmpty()) intel.tooStrong(me.getId(), t.getId(), warPower);
             if (!near) continue;
-            var all = atArrival(v, t, warArmy, now, n -> AttackPlanner.assault(warArmy, seenHere, wallHere, basicDefense, n, morale,
-                    ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE));
+            java.util.function.DoubleFunction<AttackPlanner.Plan> assaultWith = n -> AttackPlanner.assault(warArmy, seenHere, wallHere, basicDefense, n,
+                    morale, ASSAULT_KILL_SHARE, ASSAULT_POWER_SHARE);
+            var all = atArrival(v, t, warArmy, now, assaultWith);
             if (all != null) {
+                all = dayOnly ? byDay(v, t, all, now, assaultWith) : all;
+                if (all == null || !pace.allows(view, t.getOwner().getId(), arrival(v, t, all.send(), now), now)) continue; // waits for the day / its turn
                 double travelHours = MovementService.travelSeconds(v, t, all.send(), settings.travelSpeedOf(v)) / 3600.0;
                 assaults.add(new Strike(c, all, "war, full assault, " + basis, w / (1 + travelHours)));
             } else if (savingFor == null || w > savingFor.weight()) {
@@ -371,6 +382,23 @@ public class NpcMilitary {
         return WorldSettings.nightFactor(from.getWorld(), now.plusSeconds(seconds));
     }
 
+    private Instant arrival(Village from, Village to, Map<UnitType, Integer> units, Instant now) {
+        return now.plusSeconds(MovementService.travelSeconds(from, to, units, settings.travelSpeedOf(from)));
+    }
+
+    private boolean landsAtNight(Village from, Village to, Map<UnitType, Integer> units, Instant now) {
+        return WorldSettings.isNight(from.getWorld(), java.time.LocalTime.ofInstant(arrival(from, to, units, now), java.time.ZoneId.systemDefault()));
+    }
+
+    // Under warNoNightAttacks: a war plan that would land at night is swapped for one with fast troops that get there by
+    // day, else null (the village waits for the day; the target is not "too strong", so it does not save up for it).
+    private AttackPlanner.Plan byDay(Village from, Village to, AttackPlanner.Plan p, Instant now,
+                                     java.util.function.DoubleFunction<AttackPlanner.Plan> planWith) {
+        if (!landsAtNight(from, to, p.send(), now)) return p;
+        AttackPlanner.Plan day = planWith.apply(1);
+        return day != null && !landsAtNight(from, to, day.send(), now) ? day : null;
+    }
+
     // Plans with the night bonus at the arrival of the troops the plan picks. First by the slowest unit of the army; if
     // the troops picked arrive at another hour, planned again for that hour. With nothing to send by night, it tries
     // daytime, for fast troops that would still get there before the night.
@@ -417,7 +445,9 @@ public class NpcMilitary {
             Map<UnitType, Integer> send = new EnumMap<>(c.waves().escortEach());
             send.put(UnitType.SNOB, 1);
             try {
-                view.added(movementService.sendAttack(v, t, send));
+                Movement m = movementService.sendAttack(v, t, send);
+                view.added(m);
+                if (sent == 0 && t.getOwner() != null && !t.getOwner().isNpc()) pace.record(t.getOwner().getId(), m.getArrivesAt()); // a train counts once
                 sent++;
             } catch (MovementService.MovementException e) {
                 break; // out of noblemen range or protected: the chain is not worth starting half way
@@ -435,6 +465,7 @@ public class NpcMilitary {
         try {
             Movement m = movementService.sendAttack(v, c.target(), send);
             view.added(m);
+            if (c.target().getOwner() != null && !c.target().getOwner().isNpc()) pace.record(c.target().getOwner().getId(), m.getArrivesAt());
             int units = send.values().stream().mapToInt(Integer::intValue).sum();
             Village t = c.target();
             npcLog.add(v.getWorld(), me, v, "RAID", "Sent " + units + " units" + (send.containsKey(UnitType.SNOB) ? " with noblemen" : "")

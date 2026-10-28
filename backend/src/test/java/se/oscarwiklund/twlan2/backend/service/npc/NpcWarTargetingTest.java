@@ -34,6 +34,7 @@ class NpcWarTargetingTest {
     @Autowired NpcIntelRepository intelRows;
     @Autowired NpcLogRepository npcLogs;
     @Autowired NpcMilitary military;
+    @Autowired WarPace pace;
 
     // nextDouble() always answers the same: 0.999 fails every mood roll, 0 passes it
     static class Fixed extends Random {
@@ -302,6 +303,7 @@ class NpcWarTargetingTest {
         world.getSettings().put("nightStart", java.time.LocalTime.now().plusMinutes(10).format(hhmm)); // day now, night on arrival
         world.getSettings().put("nightEnd", java.time.LocalTime.now().plusHours(6).format(hhmm));
         world.getSettings().put("nightBonus", "2");
+        world.getSettings().put("warNoNightAttacks", "false"); // (with the night rule on it would not go at all, see below)
         List<Movement> atNight = to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome);
         assertEquals(1, atNight.size());
         assertTrue(atNight.get(0).getArrivesAt().isAfter(Instant.now().plusSeconds(11 * 60)));
@@ -320,5 +322,78 @@ class NpcWarTargetingTest {
         List<Movement> sent = to(step(npcHome, NpcDifficulty.BRUTAL, NO_MOOD), humanHome);
         assertEquals(4, sent.size()); // loyalty 100 at 20-35 a nobleman
         for (Movement m : sent) assertEquals(1, m.getUnits().get(UnitType.SNOB));
+    }
+
+    // Like step(), but what it sends stays on the road (WarPace counts it).
+    private List<Movement> stepKeep(Village v) {
+        WorldView view = WorldView.build(world, villages, movements, tribes, worldPoints);
+        view.wars(playerWars.enemiesByNpc(world));
+        military.step(v, NpcArchetype.BALANCED, NpcDifficulty.NORMAL.skill(), NpcDifficulty.NORMAL, view, NO_MOOD);
+        return movements.findAll().stream().filter(m -> m.getOriginVillage().getId().equals(v.getId())).toList();
+    }
+
+    private static boolean fights(Movement m) {
+        return m.getUnits().entrySet().stream().anyMatch(e -> e.getKey() != UnitType.SCOUT && e.getValue() > 0);
+    }
+
+    @Test
+    void noWarAttackLandsAtNightButScoutsStillGo() {
+        playerWars.declare(human, npc.getUsername(), world);
+        java.time.format.DateTimeFormatter hhmm = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+        world.getSettings().put("nightStart", java.time.LocalTime.now().minusHours(1).format(hhmm)); // night now and for hours
+        world.getSettings().put("nightEnd", java.time.LocalTime.now().plusHours(6).format(hhmm));
+        world.getSettings().put("nightBonus", "2");
+        List<Movement> scouting = to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome);
+        assertEquals(1, scouting.size());
+        assertTrue(scoutsOnly(scouting.get(0)));
+
+        intel.spy(world, npc, humanHome, 3, Map.of(UnitType.SPEAR, 300), 0, 0, 0, 0, 0); // an easy win, but only by night
+        assertTrue(to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome).isEmpty());
+        assertNull(intel.of(npc.getId()).get(humanHome.getId()).getSavingSince(), "a night wait is not saving up");
+
+        world.getSettings().put("warNoNightAttacks", "false");
+        assertEquals(1, to(step(npcHome, NpcDifficulty.NORMAL, NO_MOOD), humanHome).stream().filter(NpcWarTargetingTest::fights).count());
+    }
+
+    @Test
+    void atMostWarAttacksPerHourLandOnAPlayerFromAllNpcsTogether() {
+        world.getSettings().put("warAttacksPerHour", "2");
+        Account other = account("npc2", true);
+        Village second = village(npc, 100, 101), third = village(other, 101, 100);
+        arm(second, Map.of(UnitType.AXE, 1000, UnitType.LIGHT, 300));
+        arm(third, Map.of(UnitType.AXE, 1000, UnitType.LIGHT, 300));
+        playerWars.declare(human, npc.getUsername(), world);
+        playerWars.declare(human, other.getUsername(), world);
+        intel.spy(world, npc, humanHome, 3, Map.of(UnitType.SPEAR, 50), 0, 0, 0, 0, 0);
+        intel.spy(world, other, humanHome, 3, Map.of(UnitType.SPEAR, 50), 0, 0, 0, 0, 0);
+
+        assertEquals(1, to(stepKeep(npcHome), humanHome).size());
+        assertEquals(1, to(stepKeep(second), humanHome).size());
+        assertTrue(to(stepKeep(third), humanHome).isEmpty(), "a third attack within the hour is held back, also from another NPC");
+
+        world.getSettings().put("warAttacksPerHour", "0"); // no limit
+        assertEquals(1, to(stepKeep(third), humanHome).size());
+    }
+
+    @Test
+    void aNobleTrainCountsOnceAndScoutsNotAtAll() {
+        Village second = village(npc, 100, 101);
+        Instant at = Instant.now().plusSeconds(600);
+        for (int k = 0; k < 4; k++) onTheRoad(npcHome, humanHome, Map.of(UnitType.SNOB, 1, UnitType.AXE, 100), at.plusMillis(300L * k));
+        onTheRoad(second, humanHome, Map.of(UnitType.AXE, 100), at);
+        onTheRoad(second, humanHome, Map.of(UnitType.SCOUT, 5), at);
+        WorldView view = WorldView.build(world, villages, movements, tribes, worldPoints);
+        assertEquals(2, pace.landing(view, human.getId(), at.minusSeconds(3600), at.plusSeconds(3600), Instant.now()).size());
+    }
+
+    private void onTheRoad(Village from, Village to, Map<UnitType, Integer> units, Instant arrivesAt) {
+        Movement m = new Movement();
+        m.setOriginVillage(from);
+        m.setTargetVillage(to);
+        m.setType(MovementType.ATTACK);
+        m.getUnits().putAll(units);
+        m.setDepartedAt(Instant.now());
+        m.setArrivesAt(arrivesAt);
+        movements.save(m);
     }
 }
