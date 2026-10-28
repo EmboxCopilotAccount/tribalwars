@@ -117,7 +117,7 @@ export function ProfileScreen({ name, go }) {
                   </tr>
                   {(p.villages ?? []).map((v) => (
                     <tr key={v.id}>
-                      <td>{v.name}</td>
+                      <td><a href="#" onClick={(e) => go(e, "info_village:" + v.id)}>{v.name}</a></td>
                       <td>{`${v.x}|${v.y} ${continentOf(v)}`}</td>
                       <td>{fmt(v.points)}</td>
                     </tr>
