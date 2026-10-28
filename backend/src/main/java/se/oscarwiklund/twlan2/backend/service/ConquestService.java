@@ -6,6 +6,8 @@ import se.oscarwiklund.twlan2.backend.repo.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import se.oscarwiklund.twlan2.backend.service.npc.NpcVillageNames;
+
 import java.util.List;
 import java.util.Map;
 
@@ -91,6 +93,10 @@ public class ConquestService {
             }
         });
         Account previous = village.getOwner();
+        if (conqueror != null && conqueror.isNpc() && !NpcVillageNames.isOwnName(conqueror, village.getName())) { // players name their own (#128)
+            List<String> inUse = villages.findByOwner(conqueror).stream().map(Village::getName).toList();
+            village.setName(NpcVillageNames.nextFor(conqueror, inUse));
+        }
         village.setOwner(conqueror);
         village.setOwnerType(OwnerType.PLAYER);
         villageService.setLoyalty(village, LOYALTY_AFTER_CONQUEST);
