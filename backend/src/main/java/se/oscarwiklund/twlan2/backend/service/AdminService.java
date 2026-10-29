@@ -48,6 +48,7 @@ public class AdminService {
     private final SupportService support;
     private final GroupService groups;
     private final MapGroupService mapGroups;
+    private final VillageNoteService villageNotes;
     private final MarketService market;
     private final MailService mail;
     private final NpcProfiles npcProfiles;
@@ -64,7 +65,7 @@ public class AdminService {
                         JdbcTemplate jdbc, AchievementService achievements, StatsService stats,
                         NobleService nobles, FarmService farm, ResearchService research, TribeService tribes, SupportService support, GroupService groups, MarketService market, MailService mail, NpcProfiles npcProfiles, NpcLogService npcLog,
                         se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel, VictoryService victoryService, PlayerWarService playerWars,
-                        MapGroupService mapGroups) {
+                        MapGroupService mapGroups, VillageNoteService villageNotes) {
         this.victoryService = victoryService;
         this.playerWars = playerWars;
         this.npcIntel = npcIntel;
@@ -74,6 +75,7 @@ public class AdminService {
         this.mail = mail;
         this.groups = groups;
         this.mapGroups = mapGroups;
+        this.villageNotes = villageNotes;
         this.support = support;
         this.tribes = tribes;
         this.research = research;
@@ -214,6 +216,7 @@ public class AdminService {
         tribes.deleteWorldData(w.getId());
         groups.deleteWorldData(w.getId());
         mapGroups.deleteWorldData(w.getId());
+        villageNotes.deleteWorldData(w.getId());
         mail.deleteWorldData(w.getId());
         npcLog.deleteWorldData(w.getId());
         npcIntel.deleteWorldData(w.getId());
@@ -635,6 +638,7 @@ public class AdminService {
         tribes.deleteAccountData(a);
         groups.deleteAccountData(a.getId());
         mapGroups.deleteAccountData(a.getId());
+        villageNotes.deleteAccountData(a.getId());
         mail.deleteAccountData(a.getId());
         villages.findByOwner(a).forEach(this::deleteVillageData);
         sessions.deleteByAccountId(a.getId());

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { api } from "../api";
 import { UNITS, fmtDuration, onTime } from "../lib/data";
 import { commandInfo, isOwnCommand } from "../lib/military";
 import { Timer } from "../lib/ui";
@@ -532,18 +533,50 @@ function Commands({ rows, go, title, onRename }) {
   );
 }
 
-function Notes() {
+// the village's note (#104): shown above "» edit", which opens a text box in place
+function Notes({ villageId }) {
+  const [note, setNote] = useState({ villageId: null, text: "" });
+  const [draft, setDraft] = useState(null); // null = not editing
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.villageNote().then((n) => alive && setNote({ villageId, text: n.text })).catch(() => {});
+    return () => { alive = false; };
+  }, [villageId]);
+  const text = note.villageId === villageId ? note.text : "";
+  const save = async () => {
+    try {
+      const n = await api.saveVillageNote(draft);
+      setNote({ villageId, text: n.text });
+      setDraft(null);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
   return (
     <table width="100%">
       <tbody>
-        <tr ref={rawStyle("display:none")}>
-          <td id="village_note" />
+        <tr style={text && draft == null ? undefined : { display: "none" }}>
+          <td id="village_note" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text}</td>
         </tr>
-        <tr>
-          <td>
-            <a id="edit_notes_link" href="#" onClick={(e) => e.preventDefault()}>» edit</a>
-          </td>
-        </tr>
+        {draft == null ? (
+          <tr>
+            <td>
+              <a id="edit_notes_link" href="#" onClick={(e) => { e.preventDefault(); setDraft(text); }}>» edit</a>
+            </td>
+          </tr>
+        ) : (
+          <tr>
+            <td>
+              {error && <div className="error">{error}</div>}
+              <textarea id="village_note_text" rows={6} style={{ width: "97%" }} maxLength={4000} autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} />
+              <br />
+              <input type="button" className="btn" id="village_note_save" value="Save" onClick={save} />{" "}
+              <a href="#" onClick={(e) => { e.preventDefault(); setDraft(null); setError(null); }}>Cancel</a>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
@@ -607,7 +640,7 @@ export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRe
           ? { active: true, body: <BuildQueue village={village} onCancelBuild={onCancelBuild} /> }
           : { active: false };
       case "notes":
-        return { active: true, body: <Notes /> };
+        return { active: true, body: <Notes villageId={village.id} /> };
       default:
         return { active: false }; // newbie, loyalty, belief, flags, groups
     }

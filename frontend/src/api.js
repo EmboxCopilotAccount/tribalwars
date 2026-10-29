@@ -185,6 +185,8 @@ export const api = {
   renameGroup: (id, name) => request("/groups/" + id, { method: "PUT", body: JSON.stringify({ name }) }),
   deleteGroup: (id) => request("/groups/" + id, { method: "DELETE" }),
   assignGroups: (villageId, groupIds) => request("/groups/village/" + villageId, { method: "PUT", body: JSON.stringify({ groupIds }) }),
+  villageNote: () => request("/village/note"),
+  saveVillageNote: (text) => request("/village/note", { method: "PUT", body: JSON.stringify({ text }) }),
   // map groups (#119): coloured players / tribes / villages on the map
   mapGroups: () => request("/map/groups"),
   createMapGroup: (name, color) => request("/map/groups", { method: "POST", body: JSON.stringify({ name, color }) }),
