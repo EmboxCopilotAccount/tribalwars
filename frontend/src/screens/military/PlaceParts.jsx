@@ -22,6 +22,7 @@ import {
   unitsAtHome,
   morale,
   isOutgoingCommand,
+  isOwnCommand,
 } from "../../lib/military";
 import { B, confirmBox } from "../../lib/buildings";
 import { Timer } from "../../lib/ui";
@@ -79,23 +80,26 @@ export function PlaceHeader({ mode, navigate }) {
 /* ---------------- troop movements (own / foreign commands) ---------------- */
 export function CommandTables({ village, go, onCancel, onRename }) {
   const now = useNowTick();
-  const own = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
+  const all = [...(village.outgoingMovements ?? []), ...(village.incomingMovements ?? [])].map((m) => ({
     ...m,
     ...commandInfo(m),
   })).sort((a, b) => new Date(a.arrivesAt) - new Date(b.arrivesAt));
+  // own troops on the road and troops coming in from others are two tables (#84)
+  const own = all.filter(isOwnCommand);
+  const incoming = all.filter((m) => !isOwnCommand(m));
   const cancellable = (m) => onCancel && cancellableUntil(m, now);
-  if (own.length === 0) return null;
-  return (
-    <table className="vis" style={{ width: "100%" }}>
+  if (all.length === 0) return null;
+  const table = (title, rows, id) => (
+    <table className="vis" style={{ width: "100%" }} id={id}>
       <tbody>
         <tr>
           <th width="52%">
-            Own commands (<span className="command-list-count">{own.length}</span>)
+            {title} (<span className="command-list-count">{rows.length}</span>)
           </th>
           <th width="33%">Arrival</th>
           <th width="15%">Arrival in</th>
         </tr>
-        {own.map((m) => (
+        {rows.map((m) => (
           <tr key={m.icon + m.id}>
             <td>
               <img src={`/graphic/command/${m.icon}.png`} alt="" />{" "}
@@ -122,6 +126,13 @@ export function CommandTables({ village, go, onCancel, onRename }) {
         ))}
       </tbody>
     </table>
+  );
+  return (
+    <>
+      {own.length > 0 && table("Own commands", own, "commands_outgoings")}
+      {own.length > 0 && incoming.length > 0 && <br />}
+      {incoming.length > 0 && table("Incoming troops", incoming, "commands_incomings")}
+    </>
   );
 }
 

@@ -322,6 +322,8 @@ export function commandInfo(m) {
 }
 
 export const isOutgoingCommand = (m) => m.type === "SUPPORTING" || m.type === "ATTACKING";
+// "Own commands" = the player's own troops on the road (out and back home); the rest is "Incoming troops" (#84)
+export const isOwnCommand = (m) => isOutgoingCommand(m) || m.type === "RETURNING";
 
 function defaultCommandInfo(m) {
   const name = villageDisplayName({ name: m.otherVillageName, x: m.otherX, y: m.otherY });

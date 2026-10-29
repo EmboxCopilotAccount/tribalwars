@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { UNITS, fmtDuration, onTime } from "../lib/data";
-import { commandInfo } from "../lib/military";
+import { commandInfo, isOwnCommand } from "../lib/military";
 import { Timer } from "../lib/ui";
 import { queueEvents } from "./TrainScreen";
 import { CommandName } from "./military/PlaceParts";
@@ -503,13 +503,13 @@ function BuildQueue({ village, onCancelBuild }) {
   );
 }
 
-function Commands({ rows, go, foreign, onRename }) {
+function Commands({ rows, go, title, onRename }) {
   return (
     <table className="vis" style={{ width: "100%" }}>
       <tbody>
         <tr>
           <th width="52%">
-            {foreign ? "Enemy commands (" : "Own commands ("}
+            {title + " ("}
             <span className="command-list-count">{rows.length}</span>
             {")"}
           </th>
@@ -568,7 +568,11 @@ export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRe
 
   const levels = sceneLevels(village);
   const ctx = { village, fetchedAt: fetchedAt ?? Date.now() };
-  const own = [...village.outgoingMovements, ...village.incomingMovements].map((m) => ({ ...m, ...commandInfo(m) }));
+  const commands = [...village.outgoingMovements, ...village.incomingMovements]
+    .map((m) => ({ ...m, ...commandInfo(m) }))
+    .sort((a, b) => new Date(a.arrivesAt) - new Date(b.arrivesAt));
+  const own = commands.filter(isOwnCommand);
+  const incoming = commands.filter((m) => !isOwnCommand(m));
 
   // widget id -> { active, body } | null (null = the original's template renders nothing -> widget is skipped)
   const widget = (id) => {
@@ -591,9 +595,9 @@ export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRe
           ),
         };
       case "outgoingUnits":
-        return own.length > 0 ? { active: true, body: <Commands rows={own} go={go} onRename={onRenameCommand} /> } : null;
+        return own.length > 0 ? { active: true, body: <Commands rows={own} go={go} title="Own commands" onRename={onRenameCommand} /> } : null;
       case "incomingUnits":
-        return null;
+        return incoming.length > 0 ? { active: true, body: <Commands rows={incoming} go={go} title="Incoming troops" onRename={onRenameCommand} /> } : null;
       case "prod":
         return { active: true, body: <Prod village={village} /> };
       case "units":
