@@ -24,6 +24,13 @@ export function MapConfig({
 }) {
   const [cx, setCx] = useState(String(village.x));
   const [cy, setCy] = useState(String(village.y));
+  // switching villages keeps the map mounted: the fields follow the new village (#79)
+  const [shownVillage, setShownVillage] = useState(village.id);
+  if (shownVillage !== village.id) {
+    setShownVillage(village.id);
+    setCx(String(village.x));
+    setCy(String(village.y));
+  }
   const [unitsOn, setUnitsOn] = useState(false);
   const mapW = Math.floor(sizePx[0] / TILE[0]);
   const mapH = Math.floor(sizePx[1] / TILE[1]);
