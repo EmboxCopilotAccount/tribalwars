@@ -14,7 +14,7 @@ const rawStyle = (css) => (el) => {
    (Timing.tickHandlers.resources). */
 /* UI.AjaxPopup(... 'group_popup' ...) of the original: the village list of the group dropdown (arrow next to the
    village name). The player has only the built-in group "all". */
-function GroupPopup({ village, rect, onSelect, onClose, groups }) {
+function GroupPopup({ village, rect, onSelect, onClose, onManage, groups }) {
   const all = village.myVillages?.length ? village.myVillages : [{ id: village.id, name: village.name, x: village.x, y: village.y }];
   const mine = groups ? groups.inGroup(all) : all;
   return createPortal(
@@ -46,6 +46,9 @@ function GroupPopup({ village, rect, onSelect, onClose, groups }) {
               </select>
             </p>
           </form>
+          <p style={{ margin: "0 0 8px 0" }}>
+            <a id="group_popup_manage" href="#" onClick={(e) => { e.preventDefault(); onClose(); onManage?.(); }}>» edit groups</a>
+          </p>
           <div id="group_list_content" style={{ overflow: "auto", height: 340 }}>
             <table className="vis" width="100%" cellPadding="5" cellSpacing="0">
               <tbody>
@@ -165,6 +168,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                                 groups={groups}
                                 rect={groupsRect}
                                 onClose={() => setGroupsOpen(false)}
+                                onManage={() => go?.(null, "overview_villages:groups")}
                                 onSelect={(id) => { setGroupsOpen(false); if (id !== village.id) onSelectVillage?.(id); }}
                               />
                             )}

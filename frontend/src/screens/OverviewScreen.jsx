@@ -582,8 +582,68 @@ function Notes({ villageId }) {
   );
 }
 
+// the village's groups (#122): which groups it is in, "» edit" ticks them in place; groups themselves are made
+// under Overviews > Groups
+function Groups({ village, groups, go }) {
+  const [draft, setDraft] = useState(null); // ids being ticked, null = not editing
+  const [error, setError] = useState(null);
+  const all = groups?.groups ?? [];
+  const mine = all.filter((g) => g.villageIds.includes(village.id));
+  const save = async () => {
+    try {
+      await groups.actions.assign(village.id, draft);
+      setDraft(null);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  return (
+    <table width="100%" id="overview_groups">
+      <tbody>
+        {draft == null ? (
+          <tr>
+            <td>
+              {mine.length ? mine.map((g) => g.name).join(", ") : <span className="grey">No groups</span>}
+            </td>
+          </tr>
+        ) : (
+          <tr>
+            <td>
+              {error && <div className="error">{error}</div>}
+              {all.length === 0 && <p className="small">You have no groups yet.</p>}
+              {all.map((g) => (
+                <label key={g.id} style={{ display: "block" }}>
+                  <input
+                    type="checkbox"
+                    checked={draft.includes(g.id)}
+                    onChange={(e) => setDraft(e.target.checked ? [...draft, g.id] : draft.filter((x) => x !== g.id))}
+                  />{" "}
+                  {g.name}
+                </label>
+              ))}
+              {all.length > 0 && <input type="button" className="btn" id="overview_groups_save" value="Save" onClick={save} />}{" "}
+              <a href="#" onClick={(e) => { e.preventDefault(); setDraft(null); setError(null); }}>Cancel</a>
+            </td>
+          </tr>
+        )}
+        <tr>
+          <td>
+            {draft == null && (
+              <>
+                <a id="overview_groups_edit" href="#" onClick={(e) => { e.preventDefault(); setDraft(mine.map((g) => g.id)); }}>» edit</a>{" "}
+              </>
+            )}
+            <a id="overview_groups_manage" href="#" onClick={(e) => go(e, "overview_villages:groups")}>» manage groups</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 /* ---------- page ---------- */
-export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRenameCommand, fetchedAt }) {
+export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRenameCommand, groups, fetchedAt }) {
   const [visual, setVisualState] = useState(() => lsGet("twlan_ov_visual", true));
   const [showLevels, setShowLevelsState] = useState(() => lsGet("twlan_ov_labels", true));
   const [order, setOrder] = useState(() => lsGet("twlan_ov_order", DEFAULT_ORDER));
@@ -639,10 +699,12 @@ export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRe
         return (village.buildQueue ?? []).length > 0
           ? { active: true, body: <BuildQueue village={village} onCancelBuild={onCancelBuild} /> }
           : { active: false };
+      case "groups":
+        return groups ? { active: true, body: <Groups village={village} groups={groups} go={go} /> } : { active: false };
       case "notes":
         return { active: true, body: <Notes villageId={village.id} /> };
       default:
-        return { active: false }; // newbie, loyalty, belief, flags, groups
+        return { active: false }; // newbie, loyalty, belief, flags
     }
   };
 
