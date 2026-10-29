@@ -200,6 +200,14 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
   /** TWMap.focusUserSpecified (the original also flashes a beacon, which needs a container this page lacks). */
   const focusUser = useCallback((x, y) => focus(x, y), [focus]);
 
+  // switching villages keeps this screen mounted: centre on the new village like the original's reload (#79)
+  const shownVillage = useRef(village.id);
+  useEffect(() => {
+    if (shownVillage.current === village.id) return;
+    shownVillage.current = village.id;
+    focus(village.x, village.y);
+  }, [village.id, village.x, village.y, focus]);
+
   /** TWMap.resize: change the box size but keep the current centre. */
   const resizeMap = useCallback((newPx, center) => {
     const c = center ?? getCenter(posRef.current, sizeRef.current);
