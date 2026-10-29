@@ -106,9 +106,21 @@ function queueEnd(b, village, now) {
 function extraInfo(b, ctx) {
   const { village, fetchedAt, strong } = ctx;
   const now = Date.now();
+  // the building under construction shows when its own order is done, apart from the end of the whole queue (#72),
+  // which stays on the headquarters (and on recruit / research buildings)
+  const building = (village.buildQueue ?? []).find((q) => q.completesAt && q.type === b.type);
+  const buildEnd = building ? new Date(building.completesAt).getTime() : null;
   const end = queueEnd(b, village, now);
-  if (end != null) {
-    return end <= now ? <span className="warn">overdue</span> : <Timer target={new Date(end).toISOString()} />;
+  const ends = [buildEnd, end].filter((t, i, all) => t != null && all.indexOf(t) === i);
+  if (ends.length) {
+    const show = (t) => (t <= now ? <span className="warn">overdue</span> : <Timer target={new Date(t).toISOString()} />);
+    return ends.length === 1 ? show(ends[0]) : (
+      <>
+        {show(ends[0])}
+        <br />
+        <span title="Whole queue">{show(ends[1])}</span>
+      </>
+    );
   }
   if (b.id === "storage") {
     const cap = village.warehouseCapacity;
