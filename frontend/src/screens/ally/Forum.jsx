@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { BB, BBToolbar } from "../../lib/bbcode";
 import { PlayerLink, eventDate } from "./common";
+import { hashOf } from "../../lib/nav";
 
 const KIND_LABEL = { PUBLIC: "public", PRIVATE: "private", HIDDEN: "hidden forum" };
 const when = (iso) => {
@@ -48,13 +49,13 @@ function BoardTabs({ boards, current, go, canAdmin }) {
       {boards.map((b) => (
         <div key={b.id} className={"forum" + (b.id === current ? " selected" : "")} style={{ marginRight: 4 }}>
           {" "}
-          <a href="#" onClick={(e) => go(e, "ally:forum_b" + b.id)}>{b.name}</a>
+          <a href={hashOf("ally:forum_b" + b.id)} onClick={(e) => go(e, "ally:forum_b" + b.id)}>{b.name}</a>
           {b.unread > 0 && <b> ({b.unread})</b>}{" "}
         </div>
       ))}{" "}
       {canAdmin && (
         <div className="forum" style={{ marginRight: 4 }}>
-          {" "}<a href="#" onClick={(e) => go(e, "ally:forum_admin")}>» Administer forums</a>{" "}
+          {" "}<a href={hashOf("ally:forum_admin")} onClick={(e) => go(e, "ally:forum_admin")}>» Administer forums</a>{" "}
         </div>
       )}
     </div>
@@ -78,7 +79,7 @@ export function ForumIndex({ go }) {
           {data.boards.map((b) => (
             <tr key={b.id}>
               <td>
-                <a href="#" onClick={(e) => go(e, "ally:forum_b" + b.id)}>{b.name}</a>
+                <a href={hashOf("ally:forum_b" + b.id)} onClick={(e) => go(e, "ally:forum_b" + b.id)}>{b.name}</a>
                 {b.unread > 0 && <b> ({b.unread})</b>} <span className="grey">{b.kind !== "PUBLIC" ? "(" + KIND_LABEL[b.kind] + ")" : ""}</span>
               </td>
               <td>{b.threads}</td>
@@ -201,7 +202,7 @@ export function BoardView({ id, go }) {
               <td>
                 {t.unread && <b>* </b>}
                 {t.pinned && <span title="pinned">[pinned] </span>}
-                <a href="#" onClick={(e) => go(e, "ally:forum_t" + t.id)}>{t.title}</a>
+                <a href={hashOf("ally:forum_t" + t.id)} onClick={(e) => go(e, "ally:forum_t" + t.id)}>{t.title}</a>
                 {t.poll && <span> (Poll)</span>}
                 {t.closed && <span className="grey"> (closed)</span>}
               </td>
@@ -281,7 +282,7 @@ export function ThreadView({ id, go }) {
       <Err error={error} />
       <h3>{data.title}{data.closed ? " (closed)" : ""}</h3>
       <p>
-        <a href="#" onClick={(e) => go(e, "ally:forum_b" + data.boardId)}>» {data.boardName}</a>
+        <a href={hashOf("ally:forum_b" + data.boardId)} onClick={(e) => go(e, "ally:forum_b" + data.boardId)}>» {data.boardName}</a>
       </p>
       {data.poll && <PollBox poll={data.poll} onVote={(oid) => apply(() => api.forumVote(id, oid))} />}
       <div style={{ overflow: "hidden" }}>

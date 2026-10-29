@@ -1,3 +1,5 @@
+import { takeVillageParam } from "./lib/nav";
+
 const BASE = "/api";
 const WORLD_KEY = "twlan_world";
 
@@ -57,6 +59,11 @@ function loadVillageId() {
   }
 }
 loadVillageId();
+// a link opened in a new tab (`?village=<id>#screen`) plays that village; the backend ignores it if it isn't one's own
+{
+  const fromLink = takeVillageParam();
+  if (fromLink) setVillageId(fromLink);
+}
 
 export function getVillageId() {
   return villageId;

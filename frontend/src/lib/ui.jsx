@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 import { fmtDuration } from "./data";
+import { hashOf } from "./nav";
 
 export function useNow() {
   const [now, setNow] = useState(Date.now());
@@ -45,7 +46,7 @@ export function ModeMenu({ modes, current, go, screen, style }) {
         {modes.map(([mode, label]) => (
           <tr key={mode}>
             <td className={mode === current ? "selected" : undefined} style={{ minWidth: 80 }}>
-              <a href="#" onClick={(e) => go(e, screen + ":" + mode)}> {label} </a>
+              <a href={hashOf(screen + ":" + mode)} onClick={(e) => go(e, screen + ":" + mode)}> {label} </a>
             </td>
           </tr>
         ))}

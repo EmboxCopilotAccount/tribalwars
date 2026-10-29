@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { resClass } from "../lib/data";
 import { ShadowRow } from "../lib/ui";
 import { continentOf } from "../lib/military";
+import { hashOf, newTabClick } from "../lib/nav";
 
 // The original ships some inline styles as "margin:0;padding:0;"; keep the attribute verbatim.
 const rawStyle = (css) => (el) => {
@@ -65,7 +66,7 @@ function GroupPopup({ village, rect, onSelect, onClose, onManage, groups }) {
                     return (
                       <tr key={v.id}>
                         <td id={current ? "selected_popup_village" : undefined} className={current ? "selected" : undefined}>
-                          <a href="#" onClick={(e) => { e.preventDefault(); onSelect(v.id); }}>{v.name}</a>
+                          <a href={"?village=" + v.id + window.location.hash} onClick={(e) => { if (newTabClick(e)) return; e.preventDefault(); onSelect(v.id); }}>{v.name}</a>
                         </td>
                         <td className={current ? "selected" : undefined} style={{ fontWeight: "bold", width: 100, textAlign: "right" }}>
                           {v.x}|{v.y}
@@ -98,7 +99,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
     return (
       <>
         <td className={"box-item" + (first ? " icon-box firstcell" : "")}>
-          <a href="#" title={title} onClick={link(screen)}>
+          <a href={hashOf(screen)} title={title} onClick={link(screen)}>
             <span className={"icon header " + icon} />
           </a>
         </td>
@@ -147,7 +148,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                             </>
                           )}
                           <td ref={rawStyle("white-space:nowrap;")} id="menu_row2_village" className="box-item icon-box nowrap">
-                            <a className="nowrap" href="#" onClick={link("overview")}>
+                            <a className="nowrap" href={hashOf("overview")} onClick={link("overview")}>
                               <span className="icon header village" />
                               {village.name}
                             </a>
@@ -201,7 +202,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                           {resCell("stone", "stone", "Clay", village.clay, village.clayPerHour, "building:CLAY_PIT")}
                           {resCell("iron", "iron", "Iron", village.iron, village.ironPerHour, "building:IRON_MINE")}
                           <td className="box-item icon-box">
-                            <a href="#" title="Storage capacity" onClick={link("building:WAREHOUSE")}>
+                            <a href={hashOf("building:WAREHOUSE")} title="Storage capacity" onClick={link("building:WAREHOUSE")}>
                               <span className="icon header ressources" />
                             </a>
                           </td>
@@ -226,7 +227,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                       <tbody>
                         <tr>
                           <td className="box-item icon-box firstcell">
-                            <a href="#" title="Farm" onClick={link("building:FARM")}>
+                            <a href={hashOf("building:FARM")} title="Farm" onClick={link("building:FARM")}>
                               <span className="icon header population" />
                             </a>
                           </td>
@@ -252,7 +253,7 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                       <tbody>
                         <tr>
                           <td className="box-item firstcell">
-                            <a title="Paladin" href="#" onClick={link("statue")}>
+                            <a title="Paladin" href={hashOf("statue")} onClick={link("statue")}>
                               <span className="icon header knight" />
                             </a>
                           </td>
@@ -275,12 +276,12 @@ export function HeaderInfo({ village, go, now, fetchedAt, onSwitchVillage, onSel
                         <tbody>
                           <tr>
                             <td height="20" align="center" className="box-item firstcell">
-                              <a href="#" onClick={link("overview_villages:incomings")}>
+                              <a href={hashOf("overview_villages:incomings")} onClick={link("overview_villages:incomings")}>
                                 <img src="/graphic/unit/att.png" title="Incoming attacks" alt="" />
                               </a>
                             </td>
                             <td className="box-item">
-                              <a href="#" onClick={link("overview_villages:incomings")}>({incomingAttacks})</a>
+                              <a href={hashOf("overview_villages:incomings")} onClick={link("overview_villages:incomings")}>({incomingAttacks})</a>
                             </td>
                           </tr>
                         </tbody>

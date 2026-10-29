@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { continentOf, fmtOnTime } from "../lib/military";
 import { AwardImage } from "./achievements/AchievementsScreen";
+import { hashOf } from "../lib/nav";
 
 const fmt = (n) => Number(n).toLocaleString("de-DE");
 const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "");
@@ -18,8 +19,8 @@ function warOrigin(w, go) {
   if (w.viaTribe) {
     return (
       <>
-        via the tribe {w.tribeId ? <a href="#" onClick={(e) => go(e, "info_ally:" + w.tribeId)}>{w.tribeName}</a> : w.tribeName}: declared
-        on <a href="#" onClick={(e) => go(e, profileTarget(w.declaredOn))}>{w.declaredOn}</a>, peace is made with them
+        via the tribe {w.tribeId ? <a href={hashOf("info_ally:" + w.tribeId)} onClick={(e) => go(e, "info_ally:" + w.tribeId)}>{w.tribeName}</a> : w.tribeName}: declared
+        on <a href={hashOf(profileTarget(w.declaredOn))} onClick={(e) => go(e, profileTarget(w.declaredOn))}>{w.declaredOn}</a>, peace is made with them
       </>
     );
   }
@@ -85,7 +86,7 @@ export function ProfileScreen({ name, go }) {
                     <td>
                       {p.tribeId ? (
                         <>
-                          <a href="#" onClick={(e) => go(e, "info_ally:" + p.tribeId)}>{p.tribeName}</a>
+                          <a href={hashOf("info_ally:" + p.tribeId)} onClick={(e) => go(e, "info_ally:" + p.tribeId)}>{p.tribeName}</a>
                           {p.tribeTitle ? ` (${p.tribeTitle})` : ""}
                         </>
                       ) : "—"}
@@ -117,7 +118,7 @@ export function ProfileScreen({ name, go }) {
                   </tr>
                   {(p.villages ?? []).map((v) => (
                     <tr key={v.id}>
-                      <td><a href="#" onClick={(e) => go(e, "info_village:" + v.id)}>{v.name}</a></td>
+                      <td><a href={hashOf("info_village:" + v.id)} onClick={(e) => go(e, "info_village:" + v.id)}>{v.name}</a></td>
                       <td>{`${v.x}|${v.y} ${continentOf(v)}`}</td>
                       <td>{fmt(v.points)}</td>
                     </tr>
@@ -125,17 +126,17 @@ export function ProfileScreen({ name, go }) {
                 </tbody>
               </table>
               <p>
-                <a href="#" onClick={(e) => go(e, p.own ? "info_player:stats_own" : "info_player:s_" + p.name)}>» Statistics</a>
+                <a href={hashOf(p.own ? "info_player:stats_own" : "info_player:s_" + p.name)} onClick={(e) => go(e, p.own ? "info_player:stats_own" : "info_player:s_" + p.name)}>» Statistics</a>
                 {!p.own && (
                   <>
                     <br />
-                    <a href="#" onClick={(e) => go(e, "mail:new_" + p.name)}>» Send message</a>
+                    <a href={hashOf("mail:new_" + p.name)} onClick={(e) => go(e, "mail:new_" + p.name)}>» Send message</a>
                   </>
                 )}
                 {p.own && (
                   <>
                     <br />
-                    <a href="#" onClick={(e) => go(e, "settings:profile")}>» Edit profile</a>
+                    <a href={hashOf("settings:profile")} onClick={(e) => go(e, "settings:profile")}>» Edit profile</a>
                   </>
                 )}
                 {p.canDeclareWar && (
@@ -165,7 +166,7 @@ export function ProfileScreen({ name, go }) {
                     {p.wars.map((w) => (
                       <tr key={w.opponent}>
                         <td>
-                          <a href="#" onClick={(e) => go(e, profileTarget(w.opponent))}>{w.opponent}</a>
+                          <a href={hashOf(profileTarget(w.opponent))} onClick={(e) => go(e, profileTarget(w.opponent))}>{w.opponent}</a>
                           {w.tribeName ? ` (${w.tribeName})` : ""}
                         </td>
                         <td>{fmtOnTime(w.startedAt, false)}</td>
@@ -209,7 +210,7 @@ export function ProfileScreen({ name, go }) {
                   </tr>
                   {p.own && (
                     <tr>
-                      <td><a href="#" onClick={(e) => go(e, "info_player:awards")}>» All achievements</a></td>
+                      <td><a href={hashOf("info_player:awards")} onClick={(e) => go(e, "info_player:awards")}>» All achievements</a></td>
                     </tr>
                   )}
                 </tbody>

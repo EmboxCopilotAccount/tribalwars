@@ -8,6 +8,7 @@ import { api } from "../api";
 import { BB, BBToolbar } from "../lib/bbcode";
 import { useLiveTopic, usePollMs } from "../lib/live";
 import { PlayerLink, eventDate } from "./ally/common";
+import { hashOf } from "../lib/nav";
 
 const MODES = [
   ["in", "Mail"],
@@ -80,7 +81,7 @@ function Inbox({ folder, go }) {
           <tr>
             {data.folders.map((f) => (
               <td key={f.id} className={f.id === data.folder ? "selected" : undefined} style={{ textAlign: "center" }}>
-                <a href="#" onClick={(e) => go(e, "mail:in" + (f.id ? "_" + f.id : ""))}>{f.name}{f.unread > 0 ? ` (${f.unread})` : ""}</a>
+                <a href={hashOf("mail:in" + (f.id ? "_" + f.id : ""))} onClick={(e) => go(e, "mail:in" + (f.id ? "_" + f.id : ""))}>{f.name}{f.unread > 0 ? ` (${f.unread})` : ""}</a>
               </td>
             ))}
           </tr>
@@ -99,7 +100,7 @@ function Inbox({ folder, go }) {
               <td><input type="checkbox" checked={!!sel[t.id]} onChange={(e) => setSel({ ...sel, [t.id]: e.target.checked })} /></td>
               <td>
                 {t.unread && <span className="icon header new_mail" title="New mail" style={{ display: "inline-block", verticalAlign: "middle" }} />}{" "}
-                <a href="#" onClick={(e) => go(e, "mail:view_" + t.id)}>{t.unread ? <b>{t.subject}</b> : t.subject}</a>
+                <a href={hashOf("mail:view_" + t.id)} onClick={(e) => go(e, "mail:view_" + t.id)}>{t.unread ? <b>{t.subject}</b> : t.subject}</a>
                 {t.mass && <span className="grey"> (circular mail)</span>}
                 {t.messages > 1 && <span className="grey"> ({t.messages})</span>}
               </td>
@@ -171,9 +172,9 @@ function Conversation({ id, go }) {
         {data.participants.map((n, i) => <span key={n + i}>{i > 0 && ", "}<PlayerLink name={n} go={go} /></span>)}
       </p>
       <p>
-        {data.previousId != null && <><a href="#" onClick={(e) => go(e, "mail:view_" + data.previousId)}>« newer message</a>{" "}</>}
-        <a href="#" onClick={(e) => go(e, "mail:in" + (data.folderId ? "_" + data.folderId : ""))}>» Back to the list</a>
-        {data.nextId != null && <>{" "}<a href="#" onClick={(e) => go(e, "mail:view_" + data.nextId)}>older message »</a></>}
+        {data.previousId != null && <><a href={hashOf("mail:view_" + data.previousId)} onClick={(e) => go(e, "mail:view_" + data.previousId)}>« newer message</a>{" "}</>}
+        <a href={hashOf("mail:in" + (data.folderId ? "_" + data.folderId : ""))} onClick={(e) => go(e, "mail:in" + (data.folderId ? "_" + data.folderId : ""))}>» Back to the list</a>
+        {data.nextId != null && <>{" "}<a href={hashOf("mail:view_" + data.nextId)} onClick={(e) => go(e, "mail:view_" + data.nextId)}>older message »</a></>}
       </p>
       <div style={{ overflow: "hidden" }}>
         {data.messages.map((m) => (
@@ -327,7 +328,7 @@ function Circular({ go }) {
           <tr><th>Sent circular mails</th><th>Recipients</th><th>Sent</th></tr>
           {data.sent.map((c) => (
             <tr key={c.id}>
-              <td><a href="#" onClick={(e) => go(e, "mail:view_" + c.id)}>{c.subject}</a></td>
+              <td><a href={hashOf("mail:view_" + c.id)} onClick={(e) => go(e, "mail:view_" + c.id)}>{c.subject}</a></td>
               <td>{c.recipients}</td>
               <td className="nowrap">{when(c.at)}</td>
             </tr>
@@ -359,7 +360,7 @@ function ContactList({ blocked, go }) {
             <tr key={c.id}>
               <td><PlayerLink name={c.name} go={go} /></td>
               <td>
-                {!blocked && <><a href="#" onClick={(e) => go(e, "mail:new_" + c.name)}>write</a>{" "}</>}
+                {!blocked && <><a href={hashOf("mail:new_" + c.name)} onClick={(e) => go(e, "mail:new_" + c.name)}>write</a>{" "}</>}
                 <a href="#" onClick={(e) => { e.preventDefault(); swap(() => (blocked ? api.mailUnblock(c.id) : api.mailRemoveAddress(c.id))); }}>{blocked ? "unblock" : "remove"}</a>
               </td>
             </tr>
@@ -465,7 +466,7 @@ export function MailScreen({ mode, go }) {
                   {MODES.map(([k, label]) => (
                     <tr key={k}>
                       <td className={k === current ? "selected" : undefined} style={{ minWidth: 80 }}>
-                        <a href="#" onClick={(e) => go(e, "mail:" + k)}>{label + " "}</a>
+                        <a href={hashOf("mail:" + k)} onClick={(e) => go(e, "mail:" + k)}>{label + " "}</a>
                       </td>
                     </tr>
                   ))}

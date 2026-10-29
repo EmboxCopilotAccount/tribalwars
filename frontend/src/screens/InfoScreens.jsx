@@ -11,6 +11,7 @@ import { loadSetting, saveSetting } from "../lib/map";
 import { bonusOf } from "../lib/bonus";
 import { BonusIcon } from "../lib/BonusIcon";
 import { TYPE_TO_ID, UNIT_BY_ID, cancellableUntil, commandInfo, continentOf, fmtOnTime, useNowTick, villageDisplayName } from "../lib/military";
+import { hashOf } from "../lib/nav";
 
 const distance = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 const fmtDistance = (d) => (Math.round(d * 100) / 100).toString().replace(".", ",") + " fields";
@@ -65,12 +66,12 @@ export function InfoVillageScreen({ id, village, villages = [], go }) {
           )}
           <tr>
             <td>Owner:</td>
-            <td>{owner ? <a href="#" onClick={link("info_player:p_" + owner)}>{owner}</a> : <span className="grey">{v.ownerType === "BARBARIAN" ? "Barbarian" : "-"}</span>}</td>
+            <td>{owner ? <a href={hashOf("info_player:p_" + owner)} onClick={link("info_player:p_" + owner)}>{owner}</a> : <span className="grey">{v.ownerType === "BARBARIAN" ? "Barbarian" : "-"}</span>}</td>
           </tr>
           {v.ownerTribeId != null && (
             <tr>
               <td>Tribe:</td>
-              <td><a href="#" onClick={link("info_ally:" + v.ownerTribeId)}>{v.ownerTribeTag}</a></td>
+              <td><a href={hashOf("info_ally:" + v.ownerTribeId)} onClick={link("info_ally:" + v.ownerTribeId)}>{v.ownerTribeTag}</a></td>
             </tr>
           )}
           {v.id !== village.id && (
@@ -89,21 +90,21 @@ export function InfoVillageScreen({ id, village, villages = [], go }) {
           </tr>
           {v.id !== village.id && (
             <tr>
-              <td><a href="#" onClick={link("place:" + v.id)}>» Send troops</a></td>
+              <td><a href={hashOf("place:" + v.id)} onClick={link("place:" + v.id)}>» Send troops</a></td>
             </tr>
           )}
           {v.id !== village.id && (
             <tr>
-              <td><a href="#" onClick={link("market:" + v.id)}>» Send resources</a></td>
+              <td><a href={hashOf("market:" + v.id)} onClick={link("market:" + v.id)}>» Send resources</a></td>
             </tr>
           )}
           {mine && v.id !== village.id && (
             <tr>
-              <td><a href="#" onClick={link("overview_villages:combined")}>» Combined overview</a></td>
+              <td><a href={hashOf("overview_villages:combined")} onClick={link("overview_villages:combined")}>» Combined overview</a></td>
             </tr>
           )}
           <tr>
-            <td><a href="#" onClick={link(`map:${v.x},${v.y}`)}>» Center on map</a></td>
+            <td><a href={hashOf(`map:${v.x},${v.y}`)} onClick={link(`map:${v.x},${v.y}`)}>» Center on map</a></td>
           </tr>
           {v.id !== village.id && (
             <tr>
@@ -129,9 +130,9 @@ export function InfoCommandScreen({ id, village, villages = [], go, onCancel }) 
   const target = at(m.targetVillageId);
   const villageCell = (v) => (
     <>
-      <a href="#" onClick={(e) => go(e, "info_village:" + v.id)}>{v.x != null && v.y != null ? villageDisplayName(v) : v.name}</a>
+      <a href={hashOf("info_village:" + v.id)} onClick={(e) => go(e, "info_village:" + v.id)}>{v.x != null && v.y != null ? villageDisplayName(v) : v.name}</a>
       {v.ownerType === "PLAYER" && (
-        <span> — <a href="#" onClick={(e) => go(e, "info_player:p_" + (v.ownerName ?? PLAYER_NAME))}>{v.ownerName ?? PLAYER_NAME}</a></span>
+        <span> — <a href={hashOf("info_player:p_" + (v.ownerName ?? PLAYER_NAME))} onClick={(e) => go(e, "info_player:p_" + (v.ownerName ?? PLAYER_NAME))}>{v.ownerName ?? PLAYER_NAME}</a></span>
       )}
     </>
   );

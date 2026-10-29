@@ -20,6 +20,7 @@ import { setSimPreset, simForm } from "../lib/simPreset";
 import { setCommandPreset } from "../lib/commandPreset";
 import { reportBBCode } from "../lib/reportExport";
 import { VillageContext } from "./VillageContext";
+import { hashOf, newTabClick } from "../lib/nav";
 
 export const REPORT_MODES = [
   ["all", "all"],
@@ -234,7 +235,7 @@ function ReportList({ reports: all, mode, villages, go, readIds, onDelete }) {
                     <img src={`/graphic/dots/${dotColor(r)}.png`} className="" />{" "}
                     <span className="quickedit" data-id={r.id}>
                       <span className="quickedit-content">
-                        <a href="#" onClick={(e) => go(e, `report:${mode}:${r.id}`)}>
+                        <a href={hashOf(`report:${mode}:${r.id}`)} onClick={(e) => go(e, `report:${mode}:${r.id}`)}>
                           <span className="quickedit-label">
                             {reportSubject(r, fromName, toName)}
                           </span>
@@ -436,7 +437,7 @@ function ReportStep({ r, reports, mode, go, dir }) {
   const img = <img src={`/graphic/arrow_${newer ? "left" : "right"}.png`} style={{ verticalAlign: -2 }} alt="" />;
   if (!to) return <span className="grey" id={newer ? "report-prev" : "report-next"}>{newer ? <>{img} {label}</> : <>{label} {img}</>}</span>;
   return (
-    <a href="#" id={newer ? "report-prev" : "report-next"} onClick={(e) => go(e, `report:${mode}:${to.id}`)}>
+    <a href={hashOf(`report:${mode}:${to.id}`)} id={newer ? "report-prev" : "report-next"} onClick={(e) => go(e, `report:${mode}:${to.id}`)}>
       {newer ? <>{img} {label}</> : <>{label} {img}</>}
     </a>
   );
@@ -474,13 +475,13 @@ function ReportActions({ r, reports, mode, go, onDelete }) {
 function VillageCell({ side, go }) {
   return (
     <span className="village_anchor" data-id={side.id ?? ""}>
-      <a href="#" onClick={(e) => navigateTo(e, side.id ? "info_village:" + side.id : "info_village", go)}>{side.label}</a>
+      <a href={hashOf(side.id ? "info_village:" + side.id : "info_village")} onClick={(e) => navigateTo(e, side.id ? "info_village:" + side.id : "info_village", go)}>{side.label}</a>
     </span>
   );
 }
 
 function PlayerCell({ name, go }) {
-  return name ? <a href="#" onClick={(e) => navigateTo(e, "info_player:p_" + name, go)}>{name}</a> : "---";
+  return name ? <a href={hashOf("info_player:p_" + name)} onClick={(e) => navigateTo(e, "info_player:p_" + name, go)}>{name}</a> : "---";
 }
 
 function Resources({ wood, clay, iron }) {
@@ -776,14 +777,14 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                           <tr>
                             <th style={{ width: "20%" }}>Attacker:</th>
                             <th>
-                              <a href="#" onClick={(e) => navigateTo(e, r.attackerPlayer ? "info_player:p_" + r.attackerPlayer : "info_player", go)}>{attackerName(r)}</a>
+                              <a href={hashOf(r.attackerPlayer ? "info_player:p_" + r.attackerPlayer : "info_player")} onClick={(e) => navigateTo(e, r.attackerPlayer ? "info_player:p_" + r.attackerPlayer : "info_player", go)}>{attackerName(r)}</a>
                             </th>
                           </tr>
                           <tr>
                             <td>origin:</td>
                             <td>
                               <span className="village_anchor contexted" data-player="2" data-id={from?.id ?? ""}>
-                                <a href="#" onClick={(e) => navigateTo(e, from?.id ? "info_village:" + from.id : "info_village", go)}>{fromName}</a>{" "}
+                                <a href={hashOf(from?.id ? "info_village:" + from.id : "info_village")} onClick={(e) => navigateTo(e, from?.id ? "info_village:" + from.id : "info_village", go)}>{fromName}</a>{" "}
                                 <VillageContext village={from.live} currentId={currentVillageId} go={go} />
                               </span>
                             </td>
@@ -801,13 +802,13 @@ function ReportView({ report: r, reports, mode, villages, go, popup, onDelete, o
                         <tbody>
                           <tr>
                             <th style={{ width: "20%" }}>Defender:</th>
-                            <th>{r.defenderPlayer ?? (to?.ownerType === "PLAYER" ? to.ownerName : null) ? <a href="#" onClick={(e) => navigateTo(e, "info_player:p_" + (r.defenderPlayer ?? to.ownerName), go)}>{r.defenderPlayer ?? to.ownerName}</a> : "---"}</th>
+                            <th>{r.defenderPlayer ?? (to?.ownerType === "PLAYER" ? to.ownerName : null) ? <a href={hashOf("info_player:p_" + (r.defenderPlayer ?? to.ownerName))} onClick={(e) => navigateTo(e, "info_player:p_" + (r.defenderPlayer ?? to.ownerName), go)}>{r.defenderPlayer ?? to.ownerName}</a> : "---"}</th>
                           </tr>
                           <tr>
                             <td>target:</td>
                             <td>
                               <span className="village_anchor contexted" data-player="0" data-id={toSide.id ?? ""}>
-                                <a href="#" onClick={(e) => navigateTo(e, toSide.id ? "info_village:" + toSide.id : "info_village", go)}>{toName}</a>{" "}
+                                <a href={hashOf(toSide.id ? "info_village:" + toSide.id : "info_village")} onClick={(e) => navigateTo(e, toSide.id ? "info_village:" + toSide.id : "info_village", go)}>{toName}</a>{" "}
                                 <VillageContext village={toSide.live} currentId={currentVillageId} go={go} />
                               </span>
                             </td>
@@ -997,6 +998,7 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
   // tabs of the original all lead to the same "all" list
   const nav = (e, target) => {
     if (go) return go(e, target);
+    if (newTabClick(e)) return;
     if (e) e.preventDefault();
     setHashTarget(target);
     force((n) => n + 1);
@@ -1016,7 +1018,7 @@ export function ReportsScreen({ reports = [], mode = "all", go, onReportsChanged
                   {REPORT_MODES.map(([m, label]) => (
                     <tr key={m}>
                       <td className={m === (FILTERING_MODES.includes(mode) ? mode : "all") ? "selected" : undefined} style={{ minWidth: 80 }}>
-                        <a href="#" onClick={(e) => nav(e, "report:" + m)}>
+                        <a href={hashOf("report:" + m)} onClick={(e) => nav(e, "report:" + m)}>
                           {label + " "}
                         </a>
                       </td>

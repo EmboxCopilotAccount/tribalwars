@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { levelOf } from "./data";
 import { recruitFactor } from "./bonus";
+import { newTabClick } from "./nav";
 
 const UNIT_DATA = [
  {
@@ -372,6 +373,7 @@ export function useHashNav(screenName, go) {
   const [, force] = useState(0);
   const parts = hashParts();
   const navigate = (e, target) => {
+    if (newTabClick(e)) return;
     if (e) e.preventDefault();
     if (go) go(null, target);
     else setHashTarget(target);
@@ -382,6 +384,7 @@ export function useHashNav(screenName, go) {
 
 // cross-screen navigation (App's go() when available, otherwise hash + reload)
 export function navigateTo(e, target, go) {
+  if (newTabClick(e)) return;
   if (e) e.preventDefault();
   if (go) return go(null, target);
   setHashTarget(target);

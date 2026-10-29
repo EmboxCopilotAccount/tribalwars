@@ -1,14 +1,15 @@
 // Shared bits of the tribe (screen=ally) pages.
 import { useState } from "react";
+import { hashOf } from "../../lib/nav";
 
 export const thousands = (n) => String(Math.floor(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 /** Player / tribe links go through the app's router (game.php?screen=info_player&id=… in the original). */
 export const PlayerLink = ({ name, go }) => (
-  <a href="#" onClick={(e) => go(e, "info_player:p_" + name)}>{name}</a>
+  <a href={hashOf("info_player:p_" + name)} onClick={(e) => go(e, "info_player:p_" + name)}>{name}</a>
 );
 export const TribeLink = ({ id, tag, go, children }) => (
-  <a href="#" onClick={(e) => go(e, "info_ally:" + id)}>{children ?? tag}</a>
+  <a href={hashOf("info_ally:" + id)} onClick={(e) => go(e, "info_ally:" + id)}>{children ?? tag}</a>
 );
 
 // event texts of the original (game.ally.events.N); {fromPlayer}/{toPlayer}/{toTribe} become links

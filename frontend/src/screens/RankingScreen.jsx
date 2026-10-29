@@ -3,6 +3,7 @@ import { api } from "../api";
 import { PLAYER_NAME, villagePoints } from "../lib/data";
 import { ModeMenu } from "../lib/ui";
 import { Wars } from "./ally/Wars";
+import { hashOf } from "../lib/nav";
 
 /* Mirrors templates ranking/index.php + navi.php + player.php + ally.php of the original.
    Real behaviour (checked against the running original):
@@ -146,14 +147,14 @@ function Pager({ pager, total }) {
 }
 
 // gold / silver / bronze: the first three entries of the list
-function Podium({ rows, label, href }) {
+function Podium({ rows, label, target, href }) {
   if (rows.length === 0) return null;
   const places = ["gold", "silver", "bronze"];
   return (
     <div className="ranking-top3">
       {places.slice(0, rows.length).map((cls, i) => (
         <div key={cls} className={cls}>
-          <a href="#" onClick={href(rows[i])}>{label(rows[i])}</a>
+          <a href={hashOf(target(rows[i]))} onClick={href(rows[i])}>{label(rows[i])}</a>
         </div>
       ))}
     </div>
@@ -189,12 +190,13 @@ function PlayerRanking({ mode, village, go }) {
   const [continent, setContinent] = useState(() => continentOfVillage(village));
   const data = useRows(() => api.rankingPlayers(kills ? "kills" : "points", con ? continent : undefined), `${mode}/${continent}`);
   const view = useListView(data?.rows ?? [], { name: (p) => p.name }, (p) => p.name === PLAYER_NAME); // the engine highlights the own player by default
-  const link = (p) => (e) => go(e, "info_player:p_" + p.name);
+  const target = (p) => "info_player:p_" + p.name;
+  const link = (p) => (e) => go(e, target(p));
 
   return (
     <>
       {con && data && <ContinentForm continents={data.continents.includes(continent) ? data.continents : [continent, ...data.continents]} value={continent} onChange={setContinent} />}
-      {view.podium && <Podium rows={view.all} label={(p) => p.name} href={link} />}
+      {view.podium && <Podium rows={view.all} label={(p) => p.name} target={target} href={link} />}
       <table id="player_ranking_table" className="vis" width="100%">
         <tbody>
           <tr>
@@ -212,9 +214,9 @@ function PlayerRanking({ mode, village, go }) {
           {view.rows.map((p) => (
             <tr key={p.id} className={view.lit(p) ? "lit" : undefined}>
               <td className="lit-item">{p.rank}</td>
-              <td className="lit-item nowrap"><a className="" href="#" onClick={link(p)}> {p.name} </a></td>
+              <td className="lit-item nowrap"><a className="" href={hashOf(target(p))} onClick={link(p)}> {p.name} </a></td>
               <td className="lit-item nowrap">
-                {p.tribeId && <a href="#" onClick={(e) => go(e, "info_ally:" + p.tribeId)}> {p.tribeTag} </a>}
+                {p.tribeId && <a href={hashOf("info_ally:" + p.tribeId)} onClick={(e) => go(e, "info_ally:" + p.tribeId)}> {p.tribeTag} </a>}
               </td>
               {kills ? <td className="lit-item">{thousands(p.kills)}</td> : (
                 <>
@@ -255,13 +257,14 @@ function AllyRanking({ mode, village, go }) {
   const [continent, setContinent] = useState(() => continentOfVillage(village));
   const data = useRows(() => api.rankingTribes(kills ? "kills" : "points", con ? continent : undefined), `${mode}/${continent}`);
   const view = useListView(data?.rows ?? [], { tag: (t) => t.tag, name: (t) => t.name }, () => false);
-  const link = (t) => (e) => go(e, "info_ally:" + t.id);
+  const target = (t) => "info_ally:" + t.id;
+  const link = (t) => (e) => go(e, target(t));
   const acInput = { className: "autocomplete ui-autocomplete-input", "data-type": "ally", autoComplete: "off" };
 
   return (
     <>
       {con && data && <ContinentForm continents={data.continents.includes(continent) ? data.continents : [continent, ...data.continents]} value={continent} onChange={setContinent} />}
-      {view.podium && <Podium rows={view.all} label={(t) => t.tag} href={link} />}
+      {view.podium && <Podium rows={view.all} label={(t) => t.tag} target={target} href={link} />}
       <table id="ally_ranking_table" className="vis" width="100%">
         <tbody>
           <tr>
@@ -280,7 +283,7 @@ function AllyRanking({ mode, village, go }) {
           {view.rows.map((t) => (
             <tr key={t.id} className={view.lit(t) ? "lit" : undefined}>
               <td className="lit-item">{t.rank}</td>
-              <td className="lit-item nowrap"><a href="#" onClick={link(t)}> {t.tag} </a></td>
+              <td className="lit-item nowrap"><a href={hashOf(target(t))} onClick={link(t)}> {t.tag} </a></td>
               {kills ? <td className="lit-item">{thousands(t.kills)}</td> : (
                 <>
                   <td className="lit-item">{thousands(t.points)}</td>
@@ -336,7 +339,7 @@ function AwardsRanking({ go }) {
             <tr key={p.player} className={p.player === PLAYER_NAME ? "lit" : undefined}>
               <td className="lit-item">{i + 1}</td>
               <td className="lit-item nowrap">
-                <a href="#" onClick={(e) => go(e, "info_player:p_" + p.player)}> {p.player} </a>
+                <a href={hashOf("info_player:p_" + p.player)} onClick={(e) => go(e, "info_player:p_" + p.player)}> {p.player} </a>
               </td>
               <td className="lit-item">{p.achievements}</td>
               <td className="lit-item">{p.levels}</td>

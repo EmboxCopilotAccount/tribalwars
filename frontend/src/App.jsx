@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { hashOf, newTabClick } from "./lib/nav";
 import { api, getStoredWorld, setWorldId, getToken, setToken, getVillageId, setVillageId } from "./api";
 import { fmtClock, fmtDate, villagePoints, setPlayerName, PLAYER_NAME } from "./lib/data";
 import { lsGet, lsSet } from "./lib/overview";
@@ -365,8 +366,9 @@ export default function App() {
   }, []);
 
   const go = (e, target) => {
+    if (newTabClick(e)) return; // the browser opens the link's href in a new tab
     if (e) e.preventDefault();
-    const hash = "#" + encodeURIComponent(target).replace(/%3A/g, ":");
+    const hash = hashOf(target);
     // each new screen is a browser history entry, so Back/Forward walk through the screens
     if (window.location.hash !== hash) window.history.pushState(null, "", hash);
     setScreen(target);
@@ -584,13 +586,13 @@ export default function App() {
           <div id="footer_left">
             <a href="#" onClick={(e) => e.preventDefault()}>tribalwars - nilz clone</a>
             {"\u00a0-\u00a0"}
-            <a href="#" onClick={(e) => go(e, "settings:ticket")}>Support</a>
+            <a href={hashOf("settings:ticket")} onClick={(e) => go(e, "settings:ticket")}>Support</a>
             {"\u00a0-\u00a0"}
-            <a href="#" onClick={(e) => go(e, "buddies")}>Friends</a>
+            <a href={hashOf("buddies")} onClick={(e) => go(e, "buddies")}>Friends</a>
             {account?.admin && (
               <>
                 {"\u00a0-\u00a0"}
-                <a href="#" onClick={(e) => go(e, "admin")}>Admin</a>
+                <a href={hashOf("admin")} onClick={(e) => go(e, "admin")}>Admin</a>
               </>
             )}
             {"\u00a0-\u00a0"}

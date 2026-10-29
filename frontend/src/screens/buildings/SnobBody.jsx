@@ -4,6 +4,7 @@ import { SNOB_UNIT, coinCost, formatWhen, levelOfId, nobleRecruitSeconds, showMe
 import { UNIT_BY_ID, useNowTick } from "../../lib/military";
 import { TrainQueue, queueEvents } from "../TrainScreen";
 import { useUnitPopup } from "../military/UnitPopup";
+import { hashOf } from "../../lib/nav";
 
 /* game/snob/coin_{index,navi,train,coin,queue}.php (world noblemanSystem "coins").
    The counters (coins, limit, existing/educating noblemen, conquered villages) come from the backend (village.nobles). */
@@ -347,7 +348,7 @@ function CoinMode({ village, go, onMintCoin }) {
           {villages.map((v) => (
             <tr key={v.id} className={vid === v.id ? "selected" : undefined} id={`village_${v.id}`}>
               <td>
-                <a href="#" onClick={(e) => (go ? go(e, "info_village:" + v.id) : e.preventDefault())}>
+                <a href={hashOf("info_village:" + v.id)} onClick={(e) => (go ? go(e, "info_village:" + v.id) : e.preventDefault())}>
                   {v.name}
                 </a>
               </td>

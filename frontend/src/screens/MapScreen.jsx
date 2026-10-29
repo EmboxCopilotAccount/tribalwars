@@ -38,6 +38,7 @@ import { MiniMap } from "./map/MiniMap";
 import { ResizeHandle } from "./map/ResizeHandle";
 import { WorldMap } from "./map/WorldMap";
 import { useMover } from "./map/useMover";
+import { hashOf, newTabClick, villageHref } from "../lib/nav";
 
 /* World map (screen=map). Mirrors the original's markup (map_whole / map_wrap / map / minimap / map_config ...)
    and re-implements what js/map.js + js/twmap_drag.js do to it: drag scrolling with the "mover" overlay, tiles
@@ -92,8 +93,9 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
   const nav = useCallback(
     (e, target) => {
       if (go) return go(e, target);
+      if (newTabClick(e)) return;
       if (e) e.preventDefault();
-      window.location.hash = "#" + encodeURIComponent(target).replace(/%3A/g, ":");
+      window.location.hash = hashOf(target);
       window.location.reload();
     },
     [go]
@@ -352,7 +354,16 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
     }
   };
 
+  // middle / ctrl-click on a village opens its info page in a new tab: the map's href follows the pressed tile
+  const onMapMouseDown = (e) => {
+    const [x, y] = tileAt(e);
+    const v = vmap.get(x * 1000 + y);
+    // no village there: no link either, so a middle-click on grass opens nothing
+    if (v) e.currentTarget.setAttribute("href", villageHref(village.id, `info_village:${v.id}`));
+    else e.currentTarget.removeAttribute("href");
+  };
   const onMapClick = (e) => {
+    if (newTabClick(e) && vmap.get(tileAt(e)[0] * 1000 + tileAt(e)[1])) return;
     e.preventDefault();
     if (mover.isDirty()) return;
     const [x, y] = tileAt(e);
@@ -422,9 +433,20 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
     const units = Object.entries(template).map(([u, n]) => `${n}x ${UNIT_BY_ID[u].name}`).join(", ");
     return `Template ${name}: ${units} - arrives in ${fmtDuration(travelSeconds(village, ctx.village, Object.keys(template), village.travelSpeed) * 1000)}`;
   };
+  // the context-menu buttons that lead to a screen (the others act on the map)
+  const ctxTarget = (id, v) => ({
+    mp_att: `place:${v.id}`,
+    mp_res: "market",
+    mp_info: `info_village:${v.id}`,
+    mp_profile: v.ownerName ? "info_player:p_" + v.ownerName : "info_player",
+    mp_msg: v.ownerName ? "mail:new_" + v.ownerName : "mail",
+    mp_recruit: "train",
+    mp_overview: "overview",
+  })[id];
   const ctxClick = (id, v) => (e) => {
-    e.preventDefault();
     e.stopPropagation();
+    if (ctxTarget(id, v) && newTabClick(e)) return; // the href opens it in a new tab
+    e.preventDefault();
     switch (id) {
       case "mp_farm_a":
         return sendFarm(v, "A");
@@ -574,7 +596,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
                           {CTX_IDS.map((id) => (
                             <a
                               key={id}
-                              href="#"
+                              href={ctx && ctxTarget(id, ctx.village) ? villageHref(village.id, ctxTarget(id, ctx.village)) : "#"}
                               title={id.startsWith("mp_farm") ? farmTitle(id) : CTX_TITLES[id]}
                               id={id}
                               className="mp"
@@ -595,6 +617,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
                             id="map"
                             className="ui-resizable"
                             onClick={onMapClick}
+                            onMouseDown={onMapMouseDown}
                             onMouseMove={onMapMouseMove}
                             onMouseLeave={hidePopup}
                           >

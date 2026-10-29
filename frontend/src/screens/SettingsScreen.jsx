@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { MissingScreen, ModeMenu } from "../lib/ui";
 import { BlockedSenders } from "./MailScreen";
+import { hashOf } from "../lib/nav";
 
 const MODES = [
   ["profile", "Profile"],
@@ -61,7 +62,7 @@ function ProfileForm({ go }) {
             <td />
             <td>
               <input className="btn" type="submit" value="Save" />{" "}
-              <a href="#" onClick={(e) => go(e, "info_player")}>» View profile</a>
+              <a href={hashOf("info_player")} onClick={(e) => go(e, "info_player")}>» View profile</a>
             </td>
           </tr>
         </tbody>

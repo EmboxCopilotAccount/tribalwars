@@ -10,6 +10,7 @@ import {
   DEFAULT_ORDER, SCENE, WIDGET_TITLES, absInt, bigImageFile, greyInt, isNight, lsGet, lsSet, popCost, prodUnit,
   sceneLevels, visualImages,
 } from "../lib/overview";
+import { hashOf } from "../lib/nav";
 
 /* Mirrors templates/twlan/controllers/game/overview/*.php of the original game (rendered markup, ids, classes, texts).
    Behaviour that the original does in VillageOverview.js / upgrade_building.js is reproduced in React state. */
@@ -216,7 +217,7 @@ function VillageScene({ ctx, levels, showLevels, upgradeMode, canUpgrade, go, on
                 >
                   {/* a building still being built for the first time shows "0 +1", not an empty box (#116) */}
                   {(exists || queued > 0) && (
-                    <a href="#" onClick={(e) => (upgradable ? e.preventDefault() : go(e, b.screen))}>
+                    <a href={hashOf(b.screen)} onClick={(e) => (upgradable ? e.preventDefault() : go(e, b.screen))}>
                       <img src={`/graphic/buildings/${b.id}.png`} className="middle" alt={b.name} />
                       {` ${level} `}
                       <span className="building_order_level">{absInt(queued)}</span>
@@ -280,7 +281,7 @@ function ClassicalOverview({ ctx, levels, canUpgrade, go, onUpgrade }) {
                   </td>
                 )}
                 <td width="240">
-                  <a href="#" onClick={(e) => go(e, b.screen)}>
+                  <a href={hashOf(b.screen)} onClick={(e) => go(e, b.screen)}>
                     <img src={`/graphic/buildings/${b.id}.png`} alt="" />
                     {" " + b.name + " "}
                   </a>
@@ -442,7 +443,7 @@ function Units({ village, go }) {
                 {support[type] > 0 && (
                   <>
                     {" "}
-                    <a href="#" title={`${village.units[type] ?? 0} own, ${support[type]} support from other villages`}
+                    <a href={hashOf("place:units")} title={`${village.units[type] ?? 0} own, ${support[type]} support from other villages`}
                       onClick={(e) => go(e, "place:units")}>
                       ({support[type]})
                     </a>
@@ -454,7 +455,7 @@ function Units({ village, go }) {
           ))}
         <tr>
           <td>
-            <a href="#" onClick={(e) => go(e, "train")}>» recruit</a>
+            <a href={hashOf("train")} onClick={(e) => go(e, "train")}>» recruit</a>
           </td>
         </tr>
       </tbody>
@@ -634,7 +635,7 @@ function Groups({ village, groups, go }) {
                 <a id="overview_groups_edit" href="#" onClick={(e) => { e.preventDefault(); setDraft(mine.map((g) => g.id)); }}>» edit</a>{" "}
               </>
             )}
-            <a id="overview_groups_manage" href="#" onClick={(e) => go(e, "overview_villages:groups")}>» manage groups</a>
+            <a id="overview_groups_manage" href={hashOf("overview_villages:groups")} onClick={(e) => go(e, "overview_villages:groups")}>» manage groups</a>
           </td>
         </tr>
       </tbody>

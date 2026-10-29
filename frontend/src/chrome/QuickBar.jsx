@@ -1,8 +1,9 @@
+import { hashOf } from "../lib/nav";
 export function QuickBar({ go }) {
   const item = (screen, icon, label) => (
     <li>
       <span>
-        <a href="#" onClick={(e) => go(e, screen)}>
+        <a href={hashOf(screen)} onClick={(e) => go(e, screen)}>
           {icon && <img src={`/graphic/buildings/${icon}.png`} className="middle" alt="" />} {label}
         </a>
       </span>

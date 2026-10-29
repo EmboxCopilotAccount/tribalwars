@@ -7,6 +7,7 @@ import { fmtOnTime, continentOf } from "../lib/military";
 import { B, ORDER } from "../lib/buildings";
 import { BonusIcon } from "../lib/BonusIcon";
 import { COMBINED_UNITS } from "./OverviewVillagesScreen";
+import { newTabClick, villageHref } from "../lib/nav";
 
 const REFRESH_MS = 30000;
 
@@ -43,6 +44,7 @@ const techUnits = () => COMBINED_UNITS.filter(([, type]) => !["SPEAR", "SWORD", 
 // opens a village (village switch first when it is not the current one), then the screen
 function useOpen(village, go, onSelectVillage) {
   return (id, screen) => (e) => {
+    if (newTabClick(e)) return; // the href opens that village's screen in a new tab
     e.preventDefault();
     if (id !== village.id) onSelectVillage?.(id);
     go(null, screen);
@@ -52,7 +54,7 @@ function useOpen(village, go, onSelectVillage) {
 function VillageLink({ v, open, screen = "overview" }) {
   return (
     <>
-      <a href="#" onClick={open(v.id, screen)}>{label(v)}</a>
+      <a href={villageHref(v.id, screen)} onClick={open(v.id, screen)}>{label(v)}</a>
       <BonusIcon code={v.bonus} />
     </>
   );
@@ -110,14 +112,14 @@ export function ProductionView({ rows, open }) {
               <Res k="iron" n={v.iron} title={`+${Math.round(v.ironPerHour)} per hour`} />
             </td>
             <td>{v.warehouseCapacity}</td>
-            <td><a href="#" onClick={open(v.id, "market")}>{`${v.merchantsAvailable}/${v.merchantsTotal}`}</a></td>
-            <td><a href="#" onClick={open(v.id, "farm")}>{`${v.populationUsed}/${v.populationCapacity}`}</a></td>
+            <td><a href={villageHref(v.id, "market")} onClick={open(v.id, "market")}>{`${v.merchantsAvailable}/${v.merchantsTotal}`}</a></td>
+            <td><a href={villageHref(v.id, "farm")} onClick={open(v.id, "farm")}>{`${v.populationUsed}/${v.populationCapacity}`}</a></td>
             <td className="nowrap">
               {v.buildQueue.map((q, j) => {
                 const id = ORDER.find((b) => B[b].type === q.type);
                 const what = `${B[id]?.name ?? q.type} ${q.demolish ? "demolished to" : "to"} level ${q.targetLevel}`;
                 return (
-                  <a key={j} href="#" onClick={open(v.id, "building:HEADQUARTERS")} title={`${what}, ${fmtOnTime(q.completesAt)}`}>
+                  <a key={j} href={villageHref(v.id, "building:HEADQUARTERS")} onClick={open(v.id, "building:HEADQUARTERS")} title={`${what}, ${fmtOnTime(q.completesAt)}`}>
                     <img src={`/graphic/buildings/${id}.png`} alt={what} /> {q.targetLevel}{" "}
                   </a>
                 );
@@ -161,7 +163,7 @@ export function TroopsView({ rows, open }) {
                 <td rowSpan={TROOP_ROWS.length} valign="top">
                   <VillageLink v={v} open={open} />
                   <br />
-                  <a href="#" onClick={open(v.id, "place:units")}>» Troops</a>
+                  <a href={villageHref(v.id, "place:units")} onClick={open(v.id, "place:units")}>» Troops</a>
                 </td>
               )}
               <td className="nowrap">{what}</td>

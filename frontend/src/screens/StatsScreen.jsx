@@ -3,6 +3,7 @@
 // the lines are step lines that run on to "now".
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { hashOf } from "../lib/nav";
 
 const RANGES = [
   ["hour", "Last hour"],
@@ -150,7 +151,7 @@ export function StatsScreen({ name, go }) {
         </tbody>
       </table>
       <p>
-        <a href="#" onClick={(e) => go(e, name ? "info_player:p_" + name : "info_player")}>» Back to the profile</a>
+        <a href={hashOf(name ? "info_player:p_" + name : "info_player")} onClick={(e) => go(e, name ? "info_player:p_" + name : "info_player")}>» Back to the profile</a>
       </p>
     </>
   );

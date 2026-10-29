@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { BB } from "../../lib/bbcode";
 import { PlayerLink, thousands } from "./common";
+import { hashOf } from "../../lib/nav";
 
 export function TribeProfile({ tribe, description, members, own, go, homepage, irc }) {
   const best40 = (members ?? []).slice().sort((a, b) => b.points - a.points).slice(0, 40).reduce((s, m) => s + m.points, 0);
@@ -65,7 +66,7 @@ export function TribeProfile({ tribe, description, members, own, go, homepage, i
                   )}
                   <tr>
                     <td align="center" colSpan="2">
-                      <a href="#" onClick={(e) => (own ? go(e, "ally:members") : e.preventDefault())}>
+                      <a href={hashOf("ally:members")} onClick={(e) => (own ? go(e, "ally:members") : e.preventDefault())}>
                         {" "}
                         Members{" "}
                       </a>

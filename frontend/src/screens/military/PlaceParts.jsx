@@ -31,6 +31,7 @@ import { simulate } from "./sim";
 import { clearSimPreset, peekSimPreset } from "../../lib/simPreset";
 import { templateCounts, useTroopTemplates } from "../../lib/troopTemplates";
 import { VillageContext } from "../VillageContext";
+import { hashOf } from "../../lib/nav";
 
 export const PLACE_MODES = [
   ["command", "Commands"],
@@ -65,7 +66,7 @@ export function PlaceHeader({ mode, navigate }) {
           <tr>
             {PLACE_MODES.map(([m, label]) => (
               <td key={m} className={mode === m ? "selected" : undefined} style={{ minWidth: 80 }}>
-                <a href="#" onClick={(e) => navigate(e, "place:" + m)}>
+                <a href={hashOf("place:" + m)} onClick={(e) => navigate(e, "place:" + m)}>
                   {label}
                 </a>
               </td>
@@ -149,7 +150,7 @@ export function CommandName({ m, go, onRename }) {
     <span className="quickedit-out" data-id={m.id} data-ignore-icons="1">
       {draft == null ? (
         <span className="quickedit-content">
-          <a href="#" onClick={(e) => navigateTo(e, "info_command:" + m.id, go)}>
+          <a href={hashOf("info_command:" + m.id)} onClick={(e) => navigateTo(e, "info_command:" + m.id, go)}>
             <span className="quickedit-label">{m.label}</span>
           </a>{" "}
           {onRename && (
@@ -550,7 +551,7 @@ export function CommandForm({ village, home, counts, setCounts, popup, target, o
       </form>
       <div className="vis float_left" ref={rawStyle("margin: 4px 0 0 10px; min-width: 125px;")}>
         <h4>
-          <a href="#" id="templates_link" onClick={(e) => go(e, "place:templates")}>Troop template</a>
+          <a href={hashOf("place:templates")} id="templates_link" onClick={(e) => go(e, "place:templates")}>Troop template</a>
         </h4>
         <table className="vis" style={{ width: "100%" }}>
           <tbody>
@@ -698,7 +699,7 @@ export function CommandConfirm({ target, units, isAttack, duration, morale = 100
 
             <td>
               <span className="village_anchor contexted" data-id={target.id} data-player="0">
-                <a href="#" onClick={(e) => navigateTo(e, "info_village:" + target.id, go)}>
+                <a href={hashOf("info_village:" + target.id)} onClick={(e) => navigateTo(e, "info_village:" + target.id, go)}>
                   {`${target.name} (${target.x}|${target.y}) ${continentOf(target)}`}
                 </a>{" "}
                 <VillageContext village={target} go={go} />
@@ -819,7 +820,7 @@ export function UnitsMode({ home, village, onWithdraw, onSendBack, go }) {
   );
   const armyUnits = (army) => Object.fromEntries(Object.entries(army.units).map(([type, n]) => [TYPE_TO_ID[type], n]));
   const villageLink = (a) => (
-    <a href="#" onClick={(e) => navigateTo(e, "map", go)}>
+    <a href={hashOf("map")} onClick={(e) => navigateTo(e, "map", go)}>
       {villageDisplayName({ name: a.villageName, x: a.x, y: a.y })}
     </a>
   );

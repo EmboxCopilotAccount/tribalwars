@@ -4,6 +4,7 @@
 // the set of tags follows the toolbar: b i u s color size url img quote spoiler center table player ally coord unit
 // building br. Anything else stays literal text.
 import { useRef, useState } from "react";
+import { hashOf } from "./nav";
 
 const TOKEN = /\[(\/?)([a-z_*|]+)(?:=([^\]]*))?\]/gi;
 const PAIRED = new Set(["b", "i", "u", "s", "color", "size", "url", "img", "quote", "spoiler", "center", "table", "player", "ally", "tribe",
@@ -110,12 +111,12 @@ function renderNodes(nodes, go) {
       case "table": return <Table key={key} nodes={n.children} render={(c) => renderNodes(c, go)} />;
       case "player": {
         const name = n.arg || plain(n.children);
-        return <a key={key} href="#" onClick={(e) => go?.(e, "info_player:p_" + name)}>{n.children.length && n.arg ? kids() : name}</a>;
+        return <a key={key} href={hashOf("info_player:p_" + name)} onClick={(e) => go?.(e, "info_player:p_" + name)}>{n.children.length && n.arg ? kids() : name}</a>;
       }
       case "ally":
       case "tribe": {
         const tag = n.arg || plain(n.children);
-        return <a key={key} href="#" onClick={(e) => go?.(e, "info_ally:t_" + tag)}>{n.children.length && n.arg ? kids() : tag}</a>;
+        return <a key={key} href={hashOf("info_ally:t_" + tag)} onClick={(e) => go?.(e, "info_ally:t_" + tag)}>{n.children.length && n.arg ? kids() : tag}</a>;
       }
       case "coord": return <span key={key}>{plain(n.children)}</span>;
       case "unit": return <img key={key} src={`graphic/unit/unit_${plain(n.children).trim()}.png`} alt={plain(n.children)} />;

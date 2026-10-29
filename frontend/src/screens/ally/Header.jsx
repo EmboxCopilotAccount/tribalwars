@@ -1,3 +1,4 @@
+import { hashOf } from "../../lib/nav";
 /* templates ally/header.php: the tribe's name and the mode menu (only the modes the viewer may use). */
 export const ALLY_MODES = [
   ["overview", "Overview", () => true],
@@ -21,7 +22,7 @@ export function AllyHeader({ tribe, me, mode, go }) {
           <tr>
             {allyModes(me).map(([m, label]) => (
               <td key={m} width="100" className={mode === m ? "selected" : undefined}>
-                <a href="#" onClick={(e) => go(e, "ally:" + m)}>{label}</a>
+                <a href={hashOf("ally:" + m)} onClick={(e) => go(e, "ally:" + m)}>{label}</a>
               </td>
             ))}
           </tr>

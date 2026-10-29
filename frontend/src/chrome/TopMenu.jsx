@@ -1,4 +1,5 @@
 import { OV, PLAYER_NAME } from "../lib/data";
+import { hashOf } from "../lib/nav";
 
 export const MENU = [
   {
@@ -115,7 +116,7 @@ export function DropDown({ items, go, playerName }) {
         {items.map(([label, target, badge]) => (
           <tr key={label + target}>
             <td className="menu-column-item">
-              <a href="#" onClick={(e) => go(e, target)}>
+              <a href={hashOf(target)} onClick={(e) => go(e, target)}>
                 {label === "__player__" ? playerName : label}
                 {badge && <span className={badge}> </span>}
               </a>
@@ -149,11 +150,11 @@ export function TopMenu({ go, unreadReports = 0, newForumPost = false, newMails 
                       if (item.ally && newForumPost) {
                         return (
                           <td key={i} className="menu-item">
-                            <a href="#" onClick={(e) => go(e, item.screen)}>
+                            <a href={hashOf(item.screen)} onClick={(e) => go(e, item.screen)}>
                               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{item.label}
                             </a>
                             <div className="buttonicon">
-                              <a href="#" onClick={(e) => go(e, "ally:forum")} style={{ display: "inline" }}>
+                              <a href={hashOf("ally:forum")} onClick={(e) => go(e, "ally:forum")} style={{ display: "inline" }}>
                                 <span className="icon header new_post" title="New posts in the tribal forum" />
                               </a>
                             </div>
@@ -168,7 +169,7 @@ export function TopMenu({ go, unreadReports = 0, newForumPost = false, newMails 
                         return (
                           <td key={i} className="menu-item" id="topdisplay">
                             <div className="bg">
-                              <a href="#" onClick={(e) => go(e, item.screen)}>{item.label}</a>
+                              <a href={hashOf(item.screen)} onClick={(e) => go(e, item.screen)}>{item.label}</a>
                               <div className="rank">
                                 (<span id="rank_rank">{rank}</span>.|<span id="rank_points">{points}</span> P)
                               </div>
@@ -179,7 +180,7 @@ export function TopMenu({ go, unreadReports = 0, newForumPost = false, newMails 
                       }
                       return (
                         <td key={i} className="menu-item">
-                          <a id={item.id} href="#" onClick={(e) => go(e, item.screen)}>
+                          <a id={item.id} href={hashOf(item.screen)} onClick={(e) => go(e, item.screen)}>
                             {item.reports && (
                               <span id="new_report" className={"icon header new_report" + (unreadReports > 0 ? "" : "_faded")} />
                             )}

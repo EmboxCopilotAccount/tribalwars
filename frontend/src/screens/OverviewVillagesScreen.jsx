@@ -4,6 +4,7 @@ import { BonusIcon } from "../lib/BonusIcon";
 import { ShipmentsTable, useMarket } from "./MarketScreen";
 import { continentOf } from "../lib/military";
 import { OverviewModeView } from "./OverviewModes";
+import { hashOf, newTabClick, villageHref } from "../lib/nav";
 
 /* Mirrors templates overviewvillages/{header,combined,groups,footer}.php of the original.
    Real behaviour (checked against the running original):
@@ -45,7 +46,7 @@ const noop = (e) => e.preventDefault();
 
 export function StatusIcon({ src, title, screen, go }) {
   return (
-    <a href="#" onClick={(e) => go(e, screen)}>
+    <a href={hashOf(screen)} onClick={(e) => go(e, screen)}>
       <img src={`/graphic/overview/${src}.png`} title={title} alt="" className="status-icon" />
     </a>
   );
@@ -74,7 +75,7 @@ function VillageNameCell({ id, label, name, onRename, go, groupsMode }) {
   return (
     <>
       <span id={`label_${id}`} style={editing ? { display: "none" } : undefined}>
-        <a href="#" onClick={(e) => go(e, "overview")}>
+        <a href={hashOf("overview")} onClick={(e) => go(e, "overview")}>
           <span id={`label_text_${id}`}>{groupsMode ? label : <> {label} </>}</span>
         </a>
         <a className="rename-icon" href="#" onClick={toggle}>&nbsp;</a>
@@ -141,6 +142,7 @@ export function CombinedTable({ village, go, name, onRename, onSelectVillage, ro
           const continent = continentOf(v);
           // the other villages are opened first (village switch), then the screen
           const open = (screen) => (e) => {
+            if (newTabClick(e)) return; // the href opens that village's screen in a new tab
             e.preventDefault();
             if (!isCurrent) onSelectVillage?.(v.id);
             go(null, screen);
@@ -154,7 +156,7 @@ export function CombinedTable({ village, go, name, onRename, onSelectVillage, ro
                   <VillageNameCell id={v.id} name={name} label={`${name} (${v.x}|${v.y}) ${continent}`} onRename={onRename} go={go} />
                 ) : (
                   <span id={`label_${v.id}`}>
-                    <a href="#" onClick={open("overview")}>
+                    <a href={villageHref(v.id, "overview")} onClick={open("overview")}>
                       <span id={`label_text_${v.id}`}> {`${v.name} (${v.x}|${v.y}) ${continent}`} </span>
                     </a>
                   </span>
@@ -167,7 +169,7 @@ export function CombinedTable({ village, go, name, onRename, onSelectVillage, ro
               <td><StatusIcon src="prod_avail" title="No recruitment" screen="garage" go={open("garage")} /></td>
               <td><StatusIcon src="prod_finish" title="Technologies fully researched" screen="smith" go={open("smith")} /></td>
               <td>
-                <a href="#" onClick={open("farm")}>
+                <a href={villageHref(v.id, "farm")} onClick={open("farm")}>
                   {`${v.populationCapacity - v.populationUsed} (${isCurrent ? levelOf(village, "FARM") : v.farmLevel ?? 0})`}
                 </a>
               </td>
@@ -175,12 +177,12 @@ export function CombinedTable({ village, go, name, onRename, onSelectVillage, ro
                 const amount = type ? units[type] ?? 0 : 0;
                 return (
                   <td key={id} className={"unit-item" + (amount ? "" : " hidden")}>
-                    {id === "snob" ? <a href="#" onClick={open("snob")}>{amount}</a> : amount}
+                    {id === "snob" ? <a href={villageHref(v.id, "snob")} onClick={open("snob")}>{amount}</a> : amount}
                   </td>
                 );
               })}
               <td>
-                <a href="#" onClick={open("market")}>{`${v.populationUsed}/${v.populationCapacity}`}</a>
+                <a href={villageHref(v.id, "market")} onClick={open("market")}>{`${v.populationUsed}/${v.populationCapacity}`}</a>
               </td>
             </tr>
           );
@@ -339,7 +341,7 @@ function GroupsView({ village, go, name, onRename, groups, villages }) {
                       <VillageNameCell id={cid} name={name} label={name} onRename={onRename} go={go} groupsMode />
                     ) : (
                       <span id={`label_${cid}`}>
-                        <a href="#" onClick={(e) => { e.preventDefault(); go(e, "overview"); }}>
+                        <a href={hashOf("overview")} onClick={(e) => { e.preventDefault(); go(e, "overview"); }}>
                           <span id={`label_text_${cid}`}>{v.name}</span>
                         </a>
                       </span>
@@ -434,7 +436,7 @@ function TransportsView({ village, go, rows }) {
             return (
               <tr key={v.id} className={i % 2 ? "row_b" : "row_a"}>
                 <td>
-                  <a href="#" onClick={(e) => go(e, "market")}>{`${v.name} (${v.x}|${v.y})`}</a>
+                  <a href={hashOf("market")} onClick={(e) => go(e, "market")}>{`${v.name} (${v.x}|${v.y})`}</a>
                 </td>
                 <td>{m ? `${m.available}/${m.total}` : "-"}</td>
                 <td>{Math.floor(cur ? village.wood : v.wood ?? 0)}</td>
@@ -465,7 +467,7 @@ export function OverviewVillagesScreen({ village, mode, go, onRename, onSelectVi
           <tr>
             {OVERVIEW_MODES.map(([m, label]) => (
               <td key={m} style={{ textAlign: "center" }} className={m === current ? "selected" : undefined} width="100">
-                <a href="#" onClick={(e) => go(e, OV(m))}>{label}</a>
+                <a href={hashOf(OV(m))} onClick={(e) => go(e, OV(m))}>{label}</a>
               </td>
             ))}
           </tr>

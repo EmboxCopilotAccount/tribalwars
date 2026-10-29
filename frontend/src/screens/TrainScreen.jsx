@@ -30,6 +30,7 @@ import {
   useNowTick,
 } from "../lib/military";
 import { useUnitPopup } from "./military/UnitPopup";
+import { hashOf } from "../lib/nav";
 
 const MODES = [
   ["train", "Recruitment"],
@@ -420,7 +421,7 @@ function TrainBody({ village, buildings, queueId, isTrain, onTrain, onDecommissi
                             <span className="float_right" style={{ marginRight: 5 }}>
                               <img src="/graphic/overview/research.png?79f5f" style={{ verticalAlign: "middle" }} alt="" />
                               &nbsp;
-                              <a href="#" style={{ float: "right" }} onClick={(e) => navigateTo(e, "smith", go)}>
+                              <a href={hashOf("smith")} style={{ float: "right" }} onClick={(e) => navigateTo(e, "smith", go)}>
                                 Research
                               </a>
                             </span>
@@ -459,7 +460,7 @@ export function TrainScreen({ village, onTrain, onDecommission, onCancelTrain, o
           <tr>
             {MODES.map(([m, label]) => (
               <td key={m} className={tab(m)}>
-                <a href="#" onClick={(e) => navigate(e, m === "decommission" ? "train:decommission" : "train")}>
+                <a href={hashOf(m === "decommission" ? "train:decommission" : "train")} onClick={(e) => navigate(e, m === "decommission" ? "train:decommission" : "train")}>
                   {label}
                 </a>
               </td>

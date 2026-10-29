@@ -11,6 +11,7 @@ import {
   TEMPLATE_KEYS, visibleTemplateKeys, ago, cleanUnits, farmTargets, isBattle, lastReports, loadHidden, loadSettings, loadTemplates,
   onFarmSynced, plunderable, reportDot, saveHidden, saveSettings, saveTemplates, templateProblem, toBackendUnits,
 } from "../../lib/farm";
+import { hashOf } from "../../lib/nav";
 
 const MAX_ROWS = 100;
 const inputsOf = (templates) =>
@@ -209,7 +210,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
               <tr key={t.id}>
                 <td>
                   {battle ? (
-                    <a href="#" onClick={(e) => go(e, "report:all:" + battle.report.id)}>
+                    <a href={hashOf("report:all:" + battle.report.id)} onClick={(e) => go(e, "report:all:" + battle.report.id)}>
                       <img src={`/graphic/dots/${reportDot(battle.report)}.png`} alt="" />
                     </a>
                   ) : (
@@ -237,7 +238,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                 </td>
                 <td>{h?.wall ?? "?"}</td>
                 <td className="nowrap">
-                  <a href="#" onClick={(e) => go(e, "info_village:" + t.id)}>{t.name} ({t.x}|{t.y})</a>
+                  <a href={hashOf("info_village:" + t.id)} onClick={(e) => go(e, "info_village:" + t.id)}>{t.name} ({t.x}|{t.y})</a>
                   {t.ownerNpc && <span className="grey"> {t.ownerName}</span>}
                 </td>
                 <td>{t.points}</td>
@@ -263,7 +264,7 @@ export function FarmAssistant({ village, villages, reports = [], home, onAttack,
                   )}
                 </td>
                 <td className="nowrap">
-                  <a href="#" title="Give commands at the rally point" onClick={(e) => go(e, "place:" + t.id)}>Rally point</a>
+                  <a href={hashOf("place:" + t.id)} title="Give commands at the rally point" onClick={(e) => go(e, "place:" + t.id)}>Rally point</a>
                   {" "}
                   <a href="#" title="Hide this village" onClick={(e) => { e.preventDefault(); setHiddenIds([...hidden, t.id]); }}>
                     <img src="/graphic/delete_small.png" alt="Hide" />

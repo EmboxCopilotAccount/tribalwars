@@ -14,6 +14,7 @@ import { PreErrorBox, Timer } from "../lib/ui";
 import { fmtOnTime, fmtBuildTime, villageDisplayName, hashParts } from "../lib/military";
 import { TargetField } from "./military/PlaceParts";
 import { pushRecent } from "../lib/targets";
+import { hashOf } from "../lib/nav";
 
 export const RESOURCES = [
   ["WOOD", "wood", "Wood", "wood"],
@@ -98,11 +99,11 @@ export function ShipmentsTable({ shipments, go, title = "Merchants on the way", 
             <tr key={s.id}>
               {perVillage && (
                 <td>
-                  <a href="#" onClick={(e) => go(e, "info_village:" + own.id)}>{`${own.name} (${own.x}|${own.y})`}</a>
+                  <a href={hashOf("info_village:" + own.id)} onClick={(e) => go(e, "info_village:" + own.id)}>{`${own.name} (${own.x}|${own.y})`}</a>
                 </td>
               )}
               <td>
-                <a href="#" onClick={(e) => go(e, "info_village:" + otherId)}>{`${s.outgoing ? (s.returning ? "Return from " : "To ") : "From "}${otherName} (${x}|${y})`}</a>
+                <a href={hashOf("info_village:" + otherId)} onClick={(e) => go(e, "info_village:" + otherId)}>{`${s.outgoing ? (s.returning ? "Return from " : "To ") : "From "}${otherName} (${x}|${y})`}</a>
               </td>
               <td><Cargo wood={s.wood} clay={s.clay} iron={s.iron} /></td>
               <td>{s.merchants}</td>
@@ -189,7 +190,7 @@ function SendMode({ village, villages, market, go, presetId }) {
           <tbody>
             <tr>
               <td>Target:</td>
-              <td><a href="#" onClick={(e) => go(e, "info_village:" + confirm.target.id)}>{villageDisplayName(confirm.target)}</a></td>
+              <td><a href={hashOf("info_village:" + confirm.target.id)} onClick={(e) => go(e, "info_village:" + confirm.target.id)}>{villageDisplayName(confirm.target)}</a></td>
             </tr>
             <tr>
               <td>Resources:</td>
@@ -368,7 +369,7 @@ function BuyMode({ village, market, go }) {
             return (
               <tr key={o.id}>
                 <td>
-                  <a href="#" onClick={(e) => go(e, "info_village:" + o.villageId)}>{`${o.villageName} (${o.x}|${o.y})`}</a>
+                  <a href={hashOf("info_village:" + o.villageId)} onClick={(e) => go(e, "info_village:" + o.villageId)}>{`${o.villageName} (${o.x}|${o.y})`}</a>
                   <br />
                   <span className="grey small">{o.owner ?? ""}</span>
                 </td>
@@ -467,7 +468,7 @@ function SellMode({ market, go }) {
           </tr>
           {own.map((o) => (
             <tr key={o.id}>
-              <td><a href="#" onClick={(e) => go(e, "info_village:" + o.villageId)}>{`${o.villageName} (${o.x}|${o.y})`}</a></td>
+              <td><a href={hashOf("info_village:" + o.villageId)} onClick={(e) => go(e, "info_village:" + o.villageId)}>{`${o.villageName} (${o.x}|${o.y})`}</a></td>
               <td className="nowrap"><ResIcon r={o.sellResource} /> {fmt(o.sellAmount)}</td>
               <td className="nowrap"><ResIcon r={o.buyResource} /> {fmt(o.buyAmount)}</td>
               <td>{o.remaining}×</td>
@@ -521,7 +522,7 @@ export function MarketScreen({ village, villages = [], go }) {
               <tr>
                 {MODES.map(([m, label]) => (
                   <td key={m} className={mode === m ? "selected" : undefined} style={{ minWidth: 80 }}>
-                    <a href="#" onClick={(e) => go(e, "market:" + m)}>{label}</a>
+                    <a href={hashOf("market:" + m)} onClick={(e) => go(e, "market:" + m)}>{label}</a>
                   </td>
                 ))}
               </tr>
