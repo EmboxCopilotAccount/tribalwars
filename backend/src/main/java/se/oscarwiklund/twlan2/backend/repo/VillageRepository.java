@@ -16,4 +16,5 @@ public interface VillageRepository extends JpaRepository<Village, Long> {
     List<Village> findByWorldAndOwner(World world, Account owner);
     List<Village> findByOwner(Account owner);
     List<Village> findByWorldAndOwnerType(World world, OwnerType ownerType);
+    java.util.Optional<Village> findFirstByWorldAndXAndY(World world, int x, int y);
 }

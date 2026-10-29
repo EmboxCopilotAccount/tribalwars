@@ -113,15 +113,23 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
     return () => { alive = false; loadTribe.current = null; clearInterval(id); };
   }, [tribePollMs]);
 
+  /* ---- map groups (#119): the player's coloured players / tribes / villages ---- */
+  const [mapGroups, setMapGroups] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    api.mapGroups().then((g) => alive && setMapGroups(g)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   /* ---- world data (TWMap.villages / players) ---- */
   const infoJson = useMemo(() => {
     const list = villages.some((v) => v.id === village.id)
       ? villages
       : [...villages, { id: village.id, name: village.name, x: village.x, y: village.y, ownerType: "PLAYER" }];
     return JSON.stringify(
-      buildVillageInfos(list, village, PLAYER_NAME, villagePoints(village), village.outgoingMovements ?? [], village.incomingMovements ?? [], tribe)
+      buildVillageInfos(list, village, PLAYER_NAME, villagePoints(village), village.outgoingMovements ?? [], village.incomingMovements ?? [], tribe, mapGroups)
     );
-  }, [villages, village, tribe]);
+  }, [villages, village, tribe, mapGroups]);
   const infos = useMemo(() => JSON.parse(infoJson), [infoJson]);
   const vsig = useMemo(() => hashStr(infoJson), [infoJson]);
   const vmap = useMemo(() => new Map(infos.map((v) => [v.x * 1000 + v.y, v])), [infos]);
@@ -656,7 +664,7 @@ export function MapScreen({ village, villages, go, focusAt, onAttack }) {
                 </table>
               </div>
               <br />
-              <MapLegend />
+              <MapLegend groups={mapGroups} onChange={setMapGroups} />
             </td>
             <td valign="top" className="map_topo" id="map_topo">
               <div id="minimap_whole" className="containerBorder">

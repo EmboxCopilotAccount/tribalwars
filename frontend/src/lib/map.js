@@ -31,6 +31,8 @@ export const COLORS = {
   grey: [150, 150, 150],
 };
 export const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+/** "#rrggbb" -> [r, g, b] */
+export const hexColor = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
 export const continentByXY = (x, y) => {
   const cx = Math.floor(x / (CON.SEC_COUNT * CON.SUB_COUNT));
@@ -111,7 +113,19 @@ export function terrainSprite(x, y) {
 }
 
 /** Rebuild TWMap.villages from the API village list. */
-export function buildVillageInfos(villages, home, playerName, homePoints, outgoing = [], incoming = [], tribe = null) {
+export function buildVillageInfos(villages, home, playerName, homePoints, outgoing = [], incoming = [], tribe = null, mapGroups = []) {
+  // map groups (#119): the first shown group naming the village, else its owner, else the owner's tribe, wins
+  const marked = { VILLAGE: new Map(), PLAYER: new Map(), TRIBE: new Map() };
+  for (const g of mapGroups) {
+    if (!g.shown) continue;
+    const c = hexColor(g.color);
+    for (const e of g.entries) {
+      const key = e.kind === "PLAYER" ? e.name : e.targetId;
+      if (!marked[e.kind].has(key)) marked[e.kind].set(key, c);
+    }
+  }
+  const groupColor = (v, barbarian) =>
+    marked.VILLAGE.get(v.id) ?? (barbarian ? null : marked.PLAYER.get(v.ownerName) ?? (v.ownerTribeId ? marked.TRIBE.get(v.ownerTribeId) : null) ?? null);
   // the viewer's tribe and how it sees the others (from /api/tribe/map): own tribe -> "ally" colour, PARTNER/NAP/ENEMY
   const tribeRows = new Map((tribe?.tribes ?? []).map((t) => [t.id, t]));
   const RELATION = { PARTNER: "partner", NAP: "nap", ENEMY: "enemy" };
@@ -159,7 +173,7 @@ export function buildVillageInfos(villages, home, playerName, homePoints, outgoi
       ownerPoints: barbarian ? 0 : ownerTotals.get(ownerName) ?? points,
       points,
       sprite: villageSprite(points, barbarian),
-      color: barbarian ? null : isHome ? COLORS.this : own ? COLORS.player : relation ? COLORS[relation] : COLORS.other,
+      color: isHome ? COLORS.this : own ? COLORS.player : groupColor(v, barbarian) ?? (barbarian ? null : relation ? COLORS[relation] : COLORS.other),
       relation,
       tribeName: tribeRow?.name ?? null,
       tribePoints: tribeRow?.points ?? 0,

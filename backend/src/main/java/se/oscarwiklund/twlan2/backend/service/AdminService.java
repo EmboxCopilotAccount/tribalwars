@@ -47,6 +47,7 @@ public class AdminService {
     private final TribeService tribes;
     private final SupportService support;
     private final GroupService groups;
+    private final MapGroupService mapGroups;
     private final MarketService market;
     private final MailService mail;
     private final NpcProfiles npcProfiles;
@@ -62,7 +63,8 @@ public class AdminService {
                         CombatReportRepository reports, WorldService worldService, VillageService villageService,
                         JdbcTemplate jdbc, AchievementService achievements, StatsService stats,
                         NobleService nobles, FarmService farm, ResearchService research, TribeService tribes, SupportService support, GroupService groups, MarketService market, MailService mail, NpcProfiles npcProfiles, NpcLogService npcLog,
-                        se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel, VictoryService victoryService, PlayerWarService playerWars) {
+                        se.oscarwiklund.twlan2.backend.service.npc.NpcIntelService npcIntel, VictoryService victoryService, PlayerWarService playerWars,
+                        MapGroupService mapGroups) {
         this.victoryService = victoryService;
         this.playerWars = playerWars;
         this.npcIntel = npcIntel;
@@ -71,6 +73,7 @@ public class AdminService {
         this.market = market;
         this.mail = mail;
         this.groups = groups;
+        this.mapGroups = mapGroups;
         this.support = support;
         this.tribes = tribes;
         this.research = research;
@@ -210,6 +213,7 @@ public class AdminService {
         World w = world(id);
         tribes.deleteWorldData(w.getId());
         groups.deleteWorldData(w.getId());
+        mapGroups.deleteWorldData(w.getId());
         mail.deleteWorldData(w.getId());
         npcLog.deleteWorldData(w.getId());
         npcIntel.deleteWorldData(w.getId());
@@ -630,6 +634,7 @@ public class AdminService {
         if (a.getId().equals(actor.getId())) throw new IllegalArgumentException("You cannot delete your own account");
         tribes.deleteAccountData(a);
         groups.deleteAccountData(a.getId());
+        mapGroups.deleteAccountData(a.getId());
         mail.deleteAccountData(a.getId());
         villages.findByOwner(a).forEach(this::deleteVillageData);
         sessions.deleteByAccountId(a.getId());
