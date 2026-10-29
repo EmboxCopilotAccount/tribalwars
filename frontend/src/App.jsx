@@ -274,7 +274,10 @@ export default function App() {
 
   // the arrows next to the village name (and the a/d hotkeys): previous / next of the player's own villages
   const switchVillage = wrap(async (dir) => {
-    const mine = villageGroups.inGroup(village?.myVillages ?? []);
+    const all = village?.myVillages ?? [];
+    const grouped = villageGroups.inGroup(all);
+    // a group without the current village (e.g. still empty) would leave the arrows dead: cycle all villages then
+    const mine = grouped.some((v) => v.id === village?.id) ? grouped : all;
     if (mine.length < 2) return;
     const at = Math.max(0, mine.findIndex((v) => v.id === village.id));
     const next = mine[(at + dir + mine.length) % mine.length];
