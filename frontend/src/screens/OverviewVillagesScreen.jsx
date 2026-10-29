@@ -360,14 +360,9 @@ function GroupsView({ village, go, name, onRename, groups, villages }) {
                   <td>
                     <div className="group_edit" id={`group_edit_div_${cid}`}>
                       {editing === cid && (
-                        <form
-                          id={`reassign_village_to_groups_form_group_edit_div_${cid}`}
-                          method="post"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            if (await attempt(() => groups.actions.assign(cid, checked))) setEditing(null);
-                          }}
-                        >
+                        // not a <form>: this sits inside the bulk-edit form, and a nested form's OK posted the page
+                        // itself (405 on the live site) instead of saving
+                        <div id={`reassign_village_to_groups_form_group_edit_div_${cid}`}>
                           <table id="group_table" width="100%" className="vis">
                             <tbody>
                               {groups.groups.map((g) => (
@@ -392,8 +387,15 @@ function GroupsView({ village, go, name, onRename, groups, villages }) {
                             </tbody>
                           </table>
                           <input type="hidden" name="village_id" value={cid} readOnly />
-                          <input type="submit" className="btn-default" value="OK" />
-                        </form>
+                          <input
+                            type="button"
+                            className="btn-default"
+                            value="OK"
+                            onClick={async () => {
+                              if (await attempt(() => groups.actions.assign(cid, checked))) setEditing(null);
+                            }}
+                          />
+                        </div>
                       )}
                     </div>
                   </td>
