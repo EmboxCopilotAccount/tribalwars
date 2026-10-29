@@ -344,7 +344,7 @@ export function confirmBox(message, onConfirm) {
   };
   const onKey = (e) => e.key === "Escape" && close();
   add("Confirm", "evt-confirm-btn btn-confirm-yes", onConfirm);
-  add("Cancellation", "evt-cancel-btn btn-confirm-no", () => {});
+  add("Cancel", "evt-cancel-btn btn-confirm-no", () => {});
   document.addEventListener("keydown", onKey);
   document.body.appendChild(fader);
   buttons.firstChild.focus();

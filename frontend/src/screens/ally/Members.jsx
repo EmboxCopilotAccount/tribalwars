@@ -168,7 +168,7 @@ export function Members({ state, run, go, onRights, setError }) {
                     ) : (
                       <>
                         <input type="submit" className="hide_toggle btn" style={hideToggle} value="Save rights" />{" "}
-                        <a className="hide_toggle btn" style={hideToggle} href="#" onClick={(e) => { e.preventDefault(); setEditing(false); }}>Cancellation</a>
+                        <a className="hide_toggle btn" style={hideToggle} href="#" onClick={(e) => { e.preventDefault(); setEditing(false); }}>Cancel</a>
                       </>
                     )}
                   </td>

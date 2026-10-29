@@ -210,7 +210,7 @@ function SendMode({ village, villages, market, go, presetId }) {
           </tbody>
         </table>
         <input type="submit" className="btn" value="OK" />{" "}
-        <a href="#" onClick={(e) => { e.preventDefault(); setConfirm(null); }}>Cancellation</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); setConfirm(null); }}>Cancel</a>
       </form>
     );
   }

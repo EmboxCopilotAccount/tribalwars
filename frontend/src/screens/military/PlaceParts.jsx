@@ -945,7 +945,7 @@ export function UnitsMode({ home, village, onWithdraw, onSendBack, go }) {
                 ))}
                 <td>
                   <input className="btn" type="submit" value="Withdraw" />{" "}
-                  <a href="#" onClick={(e) => { e.preventDefault(); setSome(null); }}>Cancellation</a>
+                  <a href="#" onClick={(e) => { e.preventDefault(); setSome(null); }}>Cancel</a>
                 </td>
               </tr>
             </tbody>

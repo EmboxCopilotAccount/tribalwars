@@ -314,7 +314,7 @@ export function ThreadView({ id, go }) {
                 <form onSubmit={async (e) => { e.preventDefault(); if (await run(() => api.forumEditPost(p.id, editing.body))) { setEditing(null); reload(); } }}>
                   <BBToolbar area={editArea} onChange={(v) => setEditing({ ...editing, body: v })} />
                   <textarea ref={editArea} rows="8" style={{ width: "100%" }} value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
-                  <input type="submit" className="btn" value="Save" /> <a href="#" onClick={(e) => { e.preventDefault(); setEditing(null); }}>Cancellation</a>
+                  <input type="submit" className="btn" value="Save" /> <a href="#" onClick={(e) => { e.preventDefault(); setEditing(null); }}>Cancel</a>
                 </form>
               ) : (
                 <BB text={p.body} go={go} />
