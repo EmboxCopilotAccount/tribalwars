@@ -200,7 +200,8 @@ function VillageScene({ ctx, levels, showLevels, upgradeMode, canUpgrade, go, on
                   {...tip}
                   onClick={upgradable ? (e) => { e.preventDefault(); onUpgrade(b); } : undefined}
                 >
-                  {exists && (
+                  {/* a building still being built for the first time shows "0 +1", not an empty box (#116) */}
+                  {(exists || queued > 0) && (
                     <a href="#" onClick={(e) => (upgradable ? e.preventDefault() : go(e, b.screen))}>
                       <img src={`/graphic/buildings/${b.id}.png`} className="middle" alt={b.name} />
                       {` ${level} `}
