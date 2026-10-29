@@ -463,6 +463,7 @@ export default function App() {
         onBuild={handleBuild}
         busy={busy}
         fetchedAt={fetchedAt}
+        onRenameCommand={handleRenameCommand}
         onCancelBuild={handleCancelBuild} onDemolish={handleDemolish} onMoveBuild={handleMoveBuild} onFinishBuild={handleFinishBuild} onRename={handleRename} onTrain={handleTrain} onCancelTrain={handleCancelTrain} onMoveTrain={handleMoveTrain} onRenamePaladin={handleRenamePaladin} onMintCoin={handleMintCoin} onResearch={handleResearch} onCancelResearch={handleCancelResearch}
       />
     );

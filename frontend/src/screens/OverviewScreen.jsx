@@ -4,6 +4,7 @@ import { UNITS, fmtDuration, onTime } from "../lib/data";
 import { commandInfo } from "../lib/military";
 import { Timer } from "../lib/ui";
 import { queueEvents } from "./TrainScreen";
+import { CommandName } from "./military/PlaceParts";
 import {
   DEFAULT_ORDER, SCENE, WIDGET_TITLES, absInt, bigImageFile, greyInt, isNight, lsGet, lsSet, popCost, prodUnit,
   sceneLevels, visualImages,
@@ -502,7 +503,7 @@ function BuildQueue({ village, onCancelBuild }) {
   );
 }
 
-function Commands({ rows, go, foreign }) {
+function Commands({ rows, go, foreign, onRename }) {
   return (
     <table className="vis" style={{ width: "100%" }}>
       <tbody>
@@ -518,15 +519,7 @@ function Commands({ rows, go, foreign }) {
         {rows.map((m) => (
           <tr key={m.type + m.id}>
             <td>
-              <img src={`/graphic/command/${m.icon}.png`} alt="" />
-              <span className="quickedit-out" data-id={m.id} data-ignore-icons="1">
-                <span className="quickedit-content">
-                  <a href="#" onClick={(e) => go(e, "info_command:" + m.id)}>
-                    <span className="quickedit-label">{" " + m.label + " "}</span>
-                  </a>
-                  <a className="rename-icon" href="#" title="rename" onClick={(e) => e.preventDefault()} />
-                </span>
-              </span>
+              <img src={`/graphic/command/${m.icon}.png`} alt="" /> <CommandName m={m} go={go} onRename={onRename} />
             </td>
             <td>{onTime(m.arrivesAt)}</td>
             <td>
@@ -557,7 +550,7 @@ function Notes() {
 }
 
 /* ---------- page ---------- */
-export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, fetchedAt }) {
+export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, onRenameCommand, fetchedAt }) {
   const [visual, setVisualState] = useState(() => lsGet("twlan_ov_visual", true));
   const [showLevels, setShowLevelsState] = useState(() => lsGet("twlan_ov_labels", true));
   const [order, setOrder] = useState(() => lsGet("twlan_ov_order", DEFAULT_ORDER));
@@ -598,7 +591,7 @@ export function OverviewScreen({ village, go, onBuild, busy, onCancelBuild, fetc
           ),
         };
       case "outgoingUnits":
-        return own.length > 0 ? { active: true, body: <Commands rows={own} go={go} /> } : null;
+        return own.length > 0 ? { active: true, body: <Commands rows={own} go={go} onRename={onRenameCommand} /> } : null;
       case "incomingUnits":
         return null;
       case "prod":
