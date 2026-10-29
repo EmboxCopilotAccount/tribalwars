@@ -1,7 +1,7 @@
 // screen=info_player&mode=awards — the player's achievements, grouped like the Tribal Wars knowledge-base page
 // (Daily / Combat / Social / Growth / Other). Frames, icons and the .award / .award-group / .progress-bar classes are
 // the original's (graphic/awards, game.css); the group boxes are drawn in App.css because the original's ui images
-// are not part of the bundle. Achievements the game cannot award (conquering, tribes, premium, events, ...) are greyed.
+// are not part of the bundle. Achievements the game cannot award (friends, quests, paladin levels, premium, events, ...) are greyed.
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
 
@@ -120,7 +120,7 @@ export function AchievementsScreen() {
       <h2>Achievements</h2>
       <p>
         You have earned <b>{earned}</b> achievement levels in <b>{distinct}</b> achievements. Achievements that need
-        things this game does not have (conquering villages, tribes, premium, quests, events, …) are shown greyed out.
+        things this game does not have (friends, quests, paladin levels, premium, events, …) are shown greyed out.
       </p>
       <table width="100%">
         <tbody>

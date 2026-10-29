@@ -8,7 +8,7 @@ import java.util.List;
 // shows the target of the level being worked on in place of {n}.
 //
 // Only achievements with a metric can be earned in this game — the others need features TWLAN2 does not have
-// (conquering, tribes, premium, quests, events, ...) and are listed as unavailable.
+// (friends, quests, paladin levels, premium, events, ...) and are listed as unavailable.
 public final class AchievementCatalog {
 
     public record Def(String key, String category, String group, String name, String description, String icon,
