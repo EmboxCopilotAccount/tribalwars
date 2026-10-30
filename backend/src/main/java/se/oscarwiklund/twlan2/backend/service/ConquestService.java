@@ -62,6 +62,10 @@ public class ConquestService {
     // are gone. It counts against the conqueror's noblemen limit.
     @Transactional
     public void conquer(Village village, Account conqueror) {
+        if (conqueror != null && village.getOwner() != null && conqueror.getId().equals(village.getOwner().getId())) {
+            conquerOwn(village, conqueror);
+            return;
+        }
         villageService.settleResources(village);
         groups.dropVillage(village.getId()); // the old owner's groups lose it
         market.dropVillage(village.getId()); // its offers and merchants on the road are gone
@@ -107,5 +111,17 @@ public class ConquestService {
             live.toAccount(conqueror, village.getWorld().getId(), LiveUpdates.VILLAGE);
         }
         nobles.addConquest(conqueror, village.getWorld());
+    }
+
+    // Self-conquest (#125): the nobleman is used up and loyalty starts over, but nothing changes hands, so none of the
+    // handover above applies - it would wipe the owner's own orders and the armies the village has out.
+    private void conquerOwn(Village village, Account owner) {
+        villageService.setLoyalty(village, LOYALTY_AFTER_CONQUEST);
+        villages.save(village);
+        if (village.getWorld() != null) {
+            live.toWorld(village.getWorld().getId(), LiveUpdates.MAP);
+            live.toAccount(owner, village.getWorld().getId(), LiveUpdates.VILLAGE);
+        }
+        nobles.addConquest(owner, village.getWorld());
     }
 }
