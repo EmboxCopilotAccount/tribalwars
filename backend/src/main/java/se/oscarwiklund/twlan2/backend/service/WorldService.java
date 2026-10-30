@@ -4,9 +4,14 @@ import se.oscarwiklund.twlan2.backend.domain.*;
 import se.oscarwiklund.twlan2.backend.repo.*;
 import se.oscarwiklund.twlan2.backend.service.victory.RuneParams;
 import se.oscarwiklund.twlan2.backend.service.victory.RuneVillage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -36,11 +41,15 @@ public class WorldService implements CommandLineRunner {
     private final CombatReportRepository combatReportRepository;
     private final AccountRepository accountRepository;
     private final VictoryService victoryService;
+    private final TransactionTemplate tx;
+
+    private static final Logger LOG = LoggerFactory.getLogger(WorldService.class);
 
     public WorldService(WorldRepository worldRepository, VillageRepository villageRepository,
                          BuildingRepository buildingRepository, UnitStockRepository unitStockRepository,
                          CombatReportRepository combatReportRepository, AccountRepository accountRepository,
-                         VictoryService victoryService) {
+                         VictoryService victoryService, PlatformTransactionManager txManager) {
+        this.tx = new TransactionTemplate(txManager);
         this.accountRepository = accountRepository;
         this.worldRepository = worldRepository;
         this.villageRepository = villageRepository;
@@ -50,9 +59,15 @@ public class WorldService implements CommandLineRunner {
         this.victoryService = victoryService;
     }
 
+    // Not one transaction: the start-building backfill below used to run inside it for minutes (a query per
+    // village and building type), and an account deleted meanwhile made its insert fail and stopped the backend.
     @Override
-    @Transactional
     public void run(String... args) {
+        tx.executeWithoutResult(status -> migrateSaves());
+        backfillStartBuildings();
+    }
+
+    private void migrateSaves() {
         if (worldRepository.count() == 0) {
             for (Object[] w : DEFAULT_WORLDS) {
                 newWorld((String) w[0], (double) w[1]);
@@ -79,12 +94,24 @@ public class WorldService implements CommandLineRunner {
             accountRepository.save(real.get(0));
         }
 
-        // saves from before a building type existed: give every village its start-level buildings
-        for (Village v : villageRepository.findAll()) {
-            if (v.getOwnerType() == OwnerType.PLAYER) {
-                ensureStartBuildings(v);
+    }
+
+    // Saves from before a building type existed: give every player village its start-level buildings. One query
+    // finds the villages missing a type (normally none); each gets its own transaction, and one deleted meanwhile
+    // (its account removed while the server starts) is skipped instead of failing the startup.
+    private void backfillStartBuildings() {
+        backfillStartBuildings(villageRepository.idsMissingBuildings(OwnerType.PLAYER, BuildingType.values().length));
+    }
+
+    void backfillStartBuildings(List<Long> ids) {
+        for (Long id : ids) {
+            try {
+                tx.executeWithoutResult(status -> villageRepository.findById(id).ifPresent(this::ensureStartBuildings));
+            } catch (DataAccessException e) {
+                LOG.info("start buildings: village {} skipped, it went away meanwhile ({})", id, e.getMostSpecificCause().getMessage());
             }
         }
+        if (!ids.isEmpty()) LOG.info("start buildings: backfilled {} village(s)", ids.size());
     }
 
     // The save that existed before accounts belongs to the first account: hand over its villages and reports.
