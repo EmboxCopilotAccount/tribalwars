@@ -155,6 +155,13 @@ public class SupportService {
         stationed.deleteAll(stationed.findByOriginVillage(village));
     }
 
+    // A village falling to the barbarians in place (abandoned, its player removed) is lost like a conquered one:
+    // its armies abroad go with it, guests go home (#130)
+    @Transactional
+    public void villageAbandoned(Village village) {
+        villageConquered(village);
+    }
+
     @Transactional
     public void deleteVillageData(Village village) {
         for (StationedTroops g : stationed.findByHostVillage(village)) returnTroops(g, null);

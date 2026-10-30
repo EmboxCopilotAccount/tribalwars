@@ -27,10 +27,13 @@ public class AbandonmentService {
     private final VillageRepository villages;
     private final MarketService market;
     private final PlayerWarService playerWars;
+    private final SupportService support;
 
     private final GameLock gameLock;
 
-    public AbandonmentService(WorldRepository worlds, VillageRepository villages, MarketService market, PlayerWarService playerWars, GameLock gameLock) {
+    public AbandonmentService(WorldRepository worlds, VillageRepository villages, MarketService market, PlayerWarService playerWars,
+                              SupportService support, GameLock gameLock) {
+        this.support = support;
         this.gameLock = gameLock;
         this.worlds = worlds;
         this.villages = villages;
@@ -54,6 +57,7 @@ public class AbandonmentService {
                 if (!abandoned) continue;
                 if (owner.isNpc()) playerWars.leaveWorld(world.getId(), owner.getId()); // a retired NPC fights no wars
                 market.dropVillage(v.getId()); // its offers go, so nobody trades with an empty village
+                support.villageAbandoned(v);
                 v.setOwner(null);
                 v.setOwnerType(OwnerType.BARBARIAN);
                 villages.save(v);

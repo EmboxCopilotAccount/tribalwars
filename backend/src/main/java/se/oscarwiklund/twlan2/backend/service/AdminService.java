@@ -314,6 +314,7 @@ public class AdminService {
             }
             case "barbarian" -> owned.forEach(v -> {
                 market.dropVillage(v.getId());
+                support.villageAbandoned(v);
                 v.setOwner(null);
                 v.setOwnerType(OwnerType.BARBARIAN);
                 v.setName("Abandoned Camp");
