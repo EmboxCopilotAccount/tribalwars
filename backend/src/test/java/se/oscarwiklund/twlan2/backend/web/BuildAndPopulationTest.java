@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // Population and build costs as the village screens see them must match what the server checks and charges.
@@ -125,6 +126,24 @@ class BuildAndPopulationTest {
         VillageStateDto.BuildQueueDto queued = facade.toDto(village).buildQueue().get(0);
         assertTrue(queued.popIncrease() > 0);
         assertEquals(BuildingType.BARRACKS.popIncrease(1), queued.popIncrease());
+    }
+
+    @Test
+    void aVillageOverItsFarmLimitCanStillBuildTheFarmAndWarehouse() {
+        fillResources();
+        setLevel(BuildingType.HEADQUARTERS, 3);
+        setLevel(BuildingType.FARM, 1);
+        UnitStock spears = new UnitStock();
+        spears.setVillage(village);
+        spears.setType(UnitType.SPEAR);
+        spears.setCount(1000);
+        stocks.save(spears);
+        assertTrue(villageService.populationUsed(village) > villageService.populationCapacity(village));
+
+        build.enqueue(village, BuildingType.FARM);      // takes no farm space: the way out
+        build.enqueue(village, BuildingType.WAREHOUSE); // takes none either
+        assertEquals(2, facade.toDto(village).buildQueue().size());
+        assertThrows(BuildService.BuildException.class, () -> build.enqueue(village, BuildingType.BARRACKS)); // takes space
     }
 
     private void move(Village from, Village to, MovementType type, Map<UnitType, Integer> units) {

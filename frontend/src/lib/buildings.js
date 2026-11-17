@@ -279,7 +279,8 @@ export function buildState(village, id, info, live) {
   if (!b.type) return { ok: true };
   // the server also keeps free the farm space of the orders already in the build queue
   const reserved = (village.buildQueue ?? []).reduce((sum, q) => sum + (q.popIncrease ?? 0), 0);
-  if (info.pop > village.populationCapacity - village.populationUsed - reserved) return { ok: false, text: "Farm too small" };
+  // a level that takes no farm space (farm, warehouse) stays buildable with the village over its limit, like on the server
+  if (info.pop > 0 && info.pop > village.populationCapacity - village.populationUsed - reserved) return { ok: false, text: "Farm too small" };
   const enough = live.wood >= info.wood && live.stone >= info.stone && live.iron >= info.iron;
   if (enough) return { ok: true };
   const cap = village.warehouseCapacity;
