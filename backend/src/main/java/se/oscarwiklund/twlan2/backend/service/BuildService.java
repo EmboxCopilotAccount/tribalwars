@@ -74,7 +74,8 @@ public class BuildService {
 
         int pendingPop = pendingPop(queue);
         int freePop = villageService.populationCapacity(village) - villageService.populationUsed(village) - pendingPop;
-        if (type.popIncrease(targetLevel) > freePop) {
+        // a level that takes no farm space (farm, warehouse) is always allowed, even with the village over its limit
+        if (type.popIncrease(targetLevel) > 0 && type.popIncrease(targetLevel) > freePop) {
             throw new BuildException("Farm too small for " + type.displayName() + " level " + targetLevel
                     + " (needs " + type.popIncrease(targetLevel) + " free population, only " + Math.max(0, freePop) + " left)");
         }
